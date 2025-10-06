@@ -80,9 +80,7 @@ def check_dependencies():
                 print(f"\n[ERROR] Error al instalar dependencias: {str(e)}")
                 return False
         else:
-            print(
-                "\n[AVISO] El programa puede no funcionar correctamente sin estas dependencias."
-            )
+            print("\n[AVISO] El programa puede no funcionar correctamente sin estas dependencias.")
             return False
 
     # Si llegamos aquí, verificar la instalación de AcoustID
@@ -119,9 +117,7 @@ def check_acoustid_installation():
         import acoustid
 
         # Verificar si fpcalc está disponible en el directorio actual
-        script_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
+        script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         os_type = platform.system()
 
         # Determinar el nombre del ejecutable según el sistema operativo
@@ -134,9 +130,7 @@ def check_acoustid_installation():
             # Verificar si se puede ejecutar
             try:
                 command = [local_fpcalc, "-version"]
-                process = subprocess.Popen(
-                    command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 stdout, stderr = process.communicate()
 
                 if process.returncode == 0:
@@ -161,7 +155,7 @@ def check_acoustid_installation():
                 True,
                 "Chromaprint (fpcalc) está correctamente instalado en el PATH del sistema.",
             )
-        except Exception as e:
+        except Exception() as e:
             if os.path.exists(local_fpcalc):
                 # Si el archivo existe localmente pero no se puede ejecutar desde acoustid
                 return (

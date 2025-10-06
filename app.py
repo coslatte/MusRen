@@ -1,8 +1,3 @@
-"""
-Punto de entrada principal para la aplicación Music Renamer.
-Este script simplemente invoca la interfaz de línea de comandos.
-"""
-
 from core.cli import Cli
 
 if __name__ == "__main__":

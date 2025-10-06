@@ -5,7 +5,7 @@ Maneja los argumentos de línea de comandos y ejecuta las operaciones correspond
 
 import os
 import argparse
-from constants.information import PARSER_DESCRIPTION
+from constants.info import PARSER_DESCRIPTION
 from core.audio_processor import AudioProcessor
 from utils.dependencies import check_dependencies
 
@@ -19,35 +19,21 @@ class Cli:
         self.parser = argparse.ArgumentParser(description=PARSER_DESCRIPTION)
         self._init_parser()
         self.args = self.parser.parse_args()
-        self.processor = AudioProcessor(
-            directory=self.args.directory, acoustid_api_key=self.args.acoustid_key
-        )
+        self.processor = AudioProcessor(directory=self.args.directory, acoustid_api_key=self.args.acoustid_key)
 
     def _verify_sync_lyrics(self) -> None:
         use_acoustid = self.args.recognition
 
-        start_lyrics = input(
-            "¿Comenzar búsqueda e incrustación de letras? (Y/N): "
-        ).lower()
+        start_lyrics = input("¿Comenzar búsqueda e incrustación de letras? (Y/N): ").lower()
         if start_lyrics == "y":
-            lyrics_results = self.processor.process_files(
-                use_recognition=use_acoustid, process_lyrics=True
-            )
+            lyrics_results = self.processor.process_files(use_recognition=use_acoustid, process_lyrics=True)
 
             # Mostrar estadísticas de procesamiento
             if lyrics_results:
                 total = len(lyrics_results)
-                recognized = sum(
-                    1 for f, r in lyrics_results.items() if r.get("recognition", False)
-                )
-                lyrics_found = sum(
-                    1 for f, r in lyrics_results.items() if r.get("lyrics_found", False)
-                )
-                lyrics_embedded = sum(
-                    1
-                    for f, r in lyrics_results.items()
-                    if r.get("lyrics_embedded", False)
-                )
+                recognized = sum(1 for f, r in lyrics_results.items() if r.get("recognition", False))
+                lyrics_found = sum(1 for f, r in lyrics_results.items() if r.get("lyrics_found", False))
+                lyrics_embedded = sum(1 for f, r in lyrics_results.items() if r.get("lyrics_embedded", False))
 
                 print("\nResumen:")
                 print(f"Total de archivos procesados: {total}")
@@ -57,8 +43,6 @@ class Cli:
                 print(f"Letras incrustadas correctamente: {lyrics_embedded}")
 
     def _add_covers(self) -> None:
-        from core.artwork import AlbumArtManager
-
         # Importar el procesador de portadas específico
         try:
             import core.install_covers as install_covers
@@ -131,9 +115,7 @@ class Cli:
 
         # Verificar si debemos buscar letras sincronizadas
         if self.args.lyrics:
-            print(
-                "Se utilizará la función de búsqueda e incrustación de letras sincronizadas."
-            )
+            print("Se utilizará la función de búsqueda e incrustación de letras sincronizadas.")
             self._verify_sync_lyrics()
 
         # Renombrar archivos
@@ -146,9 +128,7 @@ class Cli:
         changes = self.processor.rename_files()
 
         if changes:
-            keep_changes = input(
-                "¿Desea mantener los cambios de nombre? (Y/N): "
-            ).lower()
+            keep_changes = input("¿Desea mantener los cambios de nombre? (Y/N): ").lower()
             if keep_changes != "y":
                 self.processor.undo_rename(changes)
                 print("Los cambios de nombre se han revertido.")

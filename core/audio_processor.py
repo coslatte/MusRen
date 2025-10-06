@@ -1,8 +1,3 @@
-"""
-Módulo principal para el procesamiento de archivos de audio.
-Contiene la clase AudioProcessor que maneja el reconocimiento, metadatos y manipulación de archivos.
-"""
-
 import os
 import re
 import platform
@@ -29,25 +24,11 @@ class AudioProcessor:
             acoustid_api_key (str): Clave API para AcoustID
             max_workers (int): Número máximo de trabajadores para procesamiento concurrente
         """
+
         self.directory = os.path.abspath(directory)
         self.acoustid_api_key = acoustid_api_key
         self.max_workers = max_workers
         self.os_type = platform.system()
-
-    def get_audio_files(self):
-        """
-        Obtiene todos los archivos de audio en el directorio especificado.
-
-        Returns:
-            list: Lista de nombres de archivos de audio
-        """
-
-        audio_extensions = (".mp3", ".wav", ".flac", ".m4a")
-        return [
-            f
-            for f in os.listdir(self.directory)
-            if f.lower().endswith(audio_extensions)
-        ]
 
     def process_files(self, use_recognition=False, process_lyrics=False):
         """
@@ -86,6 +67,7 @@ class AudioProcessor:
         Returns:
             dict: Resultados del procesamiento
         """
+
         results = {}
         print(f"Procesando {len(files)} archivos para añadir letras sincronizadas...")
 
@@ -107,13 +89,9 @@ class AudioProcessor:
 
                     # Mostrar resumen del resultado
                     if result.get("recognition", False):
-                        print(
-                            f"[OK] Reconocido: {file} -> {result.get('artist', '')} - {result.get('title', '')}"
-                        )
+                        print(f"[OK] Reconocido: {file} -> {result.get('artist', '')} - {result.get('title', '')}")
 
-                    if result.get("lyrics_found", False) and result.get(
-                        "lyrics_embedded", False
-                    ):
+                    if result.get("lyrics_found", False) and result.get("lyrics_embedded", False):
                         print(f"[OK] Letras incrustadas: {file}")
                     elif not result.get("lyrics_found", False):
                         print(f"[ERROR] No se encontraron letras para: {file}")
@@ -137,21 +115,16 @@ class AudioProcessor:
         Returns:
             dict: Resultado del procesamiento
         """
+
         result = {}
 
         # Obtener metadatos actuales
         audio = File(file_path, easy=True)
-        current_artist = (
-            audio.get("artist", ["Unknown Artist"])[0] if audio else "Unknown Artist"
-        )
-        current_title = (
-            audio.get("title", ["Unknown Title"])[0] if audio else "Unknown Title"
-        )
+        current_artist = audio.get("artist", ["Unknown Artist"])[0] if audio else "Unknown Artist"
+        current_title = audio.get("title", ["Unknown Title"])[0] if audio else "Unknown Title"
 
         # Si se solicitó reconocimiento por AcoustID y los metadatos son insuficientes
-        needs_recognition = use_recognition and (
-            current_artist == "Unknown Artist" or current_title == "Unknown Title"
-        )
+        needs_recognition = use_recognition and (current_artist == "Unknown Artist" or current_title == "Unknown Title")
 
         if needs_recognition:
             # Implementar la lógica de reconocimiento aquí
@@ -193,18 +166,14 @@ class AudioProcessor:
                     if "cover_url" in recognition:
                         print("    Portada del álbum: encontrada e incrustada")
                 else:
-                    print(
-                        f"[ERROR] Error al actualizar metadatos: {os.path.basename(file_path)}"
-                    )
+                    print(f"[ERROR] Error al actualizar metadatos: {os.path.basename(file_path)}")
 
                 # Usar los metadatos reconocidos para buscar letras
                 artist_for_lyrics = recognition.get("artist", "")
                 title_for_lyrics = recognition.get("title", "")
             else:
                 result["recognition"] = False
-                result["recognition_error"] = recognition.get(
-                    "message", "Error desconocido"
-                )
+                result["recognition_error"] = recognition.get("message", "Error desconocido")
                 artist_for_lyrics = current_artist
                 title_for_lyrics = current_title
         else:
@@ -238,6 +207,7 @@ class AudioProcessor:
         Returns:
             dict: Información de la canción reconocida
         """
+
         try:
             print(f"Reconociendo canción: {os.path.basename(file_path)}...")
 
@@ -252,9 +222,7 @@ class AudioProcessor:
 
             # Verificar si fpcalc (Chromaprint) está disponible
             # Primero intentamos usar el fpcalc del directorio actual
-            script_dir = os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            )
+            script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             os_type = self.os_type
 
             # Determinar el nombre del ejecutable según el sistema operativo
@@ -269,9 +237,7 @@ class AudioProcessor:
                     print(f"Usando fpcalc local: {local_fpcalc}")
                     # Usar directamente el binario local
                     command = [local_fpcalc, "-json", file_path]
-                    process = subprocess.Popen(
-                        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    )
+                    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     stdout, stderr = process.communicate()
 
                     if process.returncode != 0:
@@ -345,15 +311,11 @@ class AudioProcessor:
                         # Extraer álbum
                         if "releasegroups" in recording and recording["releasegroups"]:
                             releasegroup = recording["releasegroups"][0]
-                            metadata["album"] = releasegroup.get(
-                                "title", "Álbum Desconocido"
-                            )
+                            metadata["album"] = releasegroup.get("title", "Álbum Desconocido")
 
                             # Artista del álbum
                             if "artists" in releasegroup and releasegroup["artists"]:
-                                metadata["albumartist"] = releasegroup["artists"][0][
-                                    "name"
-                                ]
+                                metadata["albumartist"] = releasegroup["artists"][0]["name"]
 
                             # Tipo de álbum
                             if "type" in releasegroup:
@@ -365,16 +327,11 @@ class AudioProcessor:
                                 matching_releases = [
                                     r
                                     for r in recording["releases"]
-                                    if r.get("releasegroup-id")
-                                    == releasegroup.get("id")
+                                    if r.get("releasegroup-id") == releasegroup.get("id")
                                 ]
 
                                 if matching_releases:
-                                    release_dates = [
-                                        r.get("date")
-                                        for r in matching_releases
-                                        if r.get("date")
-                                    ]
+                                    release_dates = [r.get("date") for r in matching_releases if r.get("date")]
                                     if release_dates:
                                         # Usar la fecha más antigua como fecha del álbum
                                         metadata["date"] = min(release_dates)
@@ -388,21 +345,11 @@ class AudioProcessor:
                                     for medium in release["mediums"]:
                                         if "tracks" in medium:
                                             for track in medium["tracks"]:
-                                                if track.get("id") == recording.get(
-                                                    "id"
-                                                ):
-                                                    metadata["tracknumber"] = track.get(
-                                                        "position", ""
-                                                    )
-                                                    metadata["discnumber"] = medium.get(
-                                                        "position", ""
-                                                    )
-                                                    metadata["totaltracks"] = (
-                                                        medium.get("track-count", "")
-                                                    )
-                                                    metadata["totaldiscs"] = (
-                                                        release.get("medium-count", "")
-                                                    )
+                                                if track.get("id") == recording.get("id"):
+                                                    metadata["tracknumber"] = track.get("position", "")
+                                                    metadata["discnumber"] = medium.get("position", "")
+                                                    metadata["totaltracks"] = medium.get("track-count", "")
+                                                    metadata["totaldiscs"] = release.get("medium-count", "")
 
                         # Extraer género
                         genres = []
@@ -429,9 +376,7 @@ class AudioProcessor:
 
                                 art_manager = AlbumArtManager()
 
-                                cover_url = art_manager.fetch_album_cover(
-                                    metadata["artist"], metadata["album"]
-                                )
+                                cover_url = art_manager.fetch_album_cover(metadata["artist"], metadata["album"])
                                 if cover_url:
                                     metadata["cover_url"] = cover_url
                             except Exception as e:
@@ -523,9 +468,7 @@ class AudioProcessor:
                     tags.delall("USLT")
 
                 # Agregar nuevas letras
-                tags["USLT::'eng'"] = USLT(
-                    encoding=3, lang="eng", desc="Lyrics", text=lyrics_content
-                )
+                tags["USLT::'eng'"] = USLT(encoding=3, lang="eng", desc="Lyrics", text=lyrics_content)
 
                 tags.save(file_path)
                 return True
@@ -767,24 +710,15 @@ class AudioProcessor:
 
                 # Verificar si existen los metadatos necesarios
                 if not audio or not audio.tags:
-                    print(
-                        f"[ADVERTENCIA] No se renombró {file}: No se encontraron metadatos"
-                    )
+                    print(f"[ADVERTENCIA] No se renombró {file}: No se encontraron metadatos")
                     continue
 
                 artist = audio.get("artist", [""])[0]
                 title = audio.get("title", [""])[0]
 
                 # Verificar si los metadatos están vacíos o son los valores por defecto
-                if (
-                    not artist
-                    or not title
-                    or artist == "Unknown Artist"
-                    or title == "Unknown Title"
-                ):
-                    print(
-                        f"[ADVERTENCIA] No se renombró {file}: Faltan metadatos de artista o título"
-                    )
+                if not artist or not title or artist == "Unknown Artist" or title == "Unknown Title":
+                    print(f"[ADVERTENCIA] No se renombró {file}: Faltan metadatos de artista o título")
                     continue
 
                 # Artista - Título.formato (.mp3, .flac, etc..)
@@ -798,9 +732,7 @@ class AudioProcessor:
                 print(f"[ERROR] Error al procesar {file}: {str(e)}")
 
         if not changes:
-            print(
-                "\nNo se realizó ningún renombrado. Todos los archivos carecían de metadatos necesarios."
-            )
+            print("\nNo se realizó ningún renombrado. Todos los archivos carecían de metadatos necesarios.")
 
         return changes
 
@@ -813,9 +745,7 @@ class AudioProcessor:
                     print(f"Deshaciendo renombrado: {new_name} -> {old_name}")
                     self._safe_rename(new_name, old_name)
                 else:
-                    print(
-                        f"El archivo {new_name} no existe para deshacer el renombrado."
-                    )
+                    print(f"El archivo {new_name} no existe para deshacer el renombrado.")
             except Exception as e:
                 print(f"Error al deshacer renombrado: {str(e)}")
 

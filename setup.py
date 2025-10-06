@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-from constants.information import (
+from constants.info import (
     MUSIC_RENAMER_NAME,
     MUSIC_RENAMER_VERSION,
     MUSIC_RENAMER_DESCRIPTION,
