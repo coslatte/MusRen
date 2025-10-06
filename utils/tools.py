@@ -1,5 +1,5 @@
 import os
-from constants.values import AUDIO_EXTENSIONS
+from constants.settings import AUDIO_EXTENSIONS
 
 
 def get_audio_files(directory):
