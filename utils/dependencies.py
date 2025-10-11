@@ -119,9 +119,7 @@ def check_acoustid_installation():
         import acoustid
 
         # Verificar si fpcalc está disponible en el directorio actual
-        script_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
+        script_dir = os.path.dirname(".")
         os_type = platform.system()
 
         # Determinar el nombre del ejecutable según el sistema operativo
@@ -156,23 +154,18 @@ def check_acoustid_installation():
         # Si no se encuentra localmente, verificar en el PATH
         try:
             # Intentar obtener la versión de fpcalc
-            acoustid.fingerprint_file(["fpcalc", "-version"])
+            result = subprocess.run(
+                ["fpcalc", "-version"], capture_output=True, text=True, check=True
+            )
             return (
                 True,
                 "Chromaprint (fpcalc) está correctamente instalado en el PATH del sistema.",
             )
-        except Exception as e:
-            if os.path.exists(local_fpcalc):
-                # Si el archivo existe localmente pero no se puede ejecutar desde acoustid
-                return (
-                    False,
-                    "Chromaprint (fpcalc) está presente en el directorio actual pero no puede ser utilizado. Asegúrese de que tiene permisos de ejecución.",
-                )
-            else:
-                return (
-                    False,
-                    "Chromaprint (fpcalc) no está instalado. Coloque fpcalc en el mismo directorio que este script o instálelo en su sistema.",
-                )
+        except Exception:
+            return (
+                False,
+                "Chromaprint (fpcalc) no está instalado. Coloque fpcalc.exe en el directorio raíz del proyecto o en la carpeta utils/.",
+            )
     except ImportError:
         return (
             False,
