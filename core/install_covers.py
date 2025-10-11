@@ -20,8 +20,16 @@ def process_file(file_path, art_manager):
         if not audio:
             return {"status": False, "error": "No se pudieron leer los metadatos"}
 
-        artist = audio.get("artist", ["Unknown Artist"])[0] if "artist" in audio else "Unknown Artist"
-        album = audio.get("album", ["Unknown Album"])[0] if "album" in audio else "Unknown Album"
+        artist = (
+            audio.get("artist", ["Unknown Artist"])[0]
+            if "artist" in audio
+            else "Unknown Artist"
+        )
+        album = (
+            audio.get("album", ["Unknown Album"])[0]
+            if "album" in audio
+            else "Unknown Album"
+        )
 
         # Verificar si el archivo ya tiene portada
         has_cover = False
@@ -52,7 +60,9 @@ def process_file(file_path, art_manager):
 
         # Si ya tiene portada, informar y saltar
         if has_cover:
-            print(f"[INFO] El archivo ya tiene portada, saltando: {os.path.basename(file_path)}")
+            print(
+                f"[INFO] El archivo ya tiene portada, saltando: {os.path.basename(file_path)}"
+            )
             return {"status": True, "message": "El archivo ya tiene portada"}
 
         # Buscar portada
@@ -79,7 +89,9 @@ def process_file(file_path, art_manager):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Añade portadas a archivos de música existentes.")
+    parser = argparse.ArgumentParser(
+        description="Añade portadas a archivos de música existentes."
+    )
     parser.add_argument(
         "-d",
         "--directory",
@@ -111,9 +123,14 @@ def main():
     # Procesar archivos en paralelo
     results = {"success": 0, "skipped": 0, "failed": 0}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=args.max_workers
+    ) as executor:
         future_to_file = {
-            executor.submit(process_file, os.path.join(directory, file), art_manager): file for file in files
+            executor.submit(
+                process_file, os.path.join(directory, file), art_manager
+            ): file
+            for file in files
         }
 
         for future in concurrent.futures.as_completed(future_to_file):

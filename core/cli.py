@@ -8,6 +8,7 @@ import argparse
 from constants.info import PARSER_DESCRIPTION
 from core.audio_processor import AudioProcessor
 from utils.dependencies import check_dependencies
+from utils.tools import get_audio_files
 
 
 class Cli:
@@ -19,21 +20,35 @@ class Cli:
         self.parser = argparse.ArgumentParser(description=PARSER_DESCRIPTION)
         self._init_parser()
         self.args = self.parser.parse_args()
-        self.processor = AudioProcessor(directory=self.args.directory, acoustid_api_key=self.args.acoustid_key)
+        self.processor = AudioProcessor(
+            directory=self.args.directory, acoustid_api_key=self.args.acoustid_key
+        )
 
     def _verify_sync_lyrics(self) -> None:
         use_acoustid = self.args.recognition
 
-        start_lyrics = input("¿Comenzar búsqueda e incrustación de letras? (Y/N): ").lower()
+        start_lyrics = input(
+            "¿Comenzar búsqueda e incrustación de letras? (Y/N): "
+        ).lower()
         if start_lyrics == "y":
-            lyrics_results = self.processor.process_files(use_recognition=use_acoustid, process_lyrics=True)
+            lyrics_results = self.processor.process_files(
+                use_recognition=use_acoustid, process_lyrics=True
+            )
 
             # Mostrar estadísticas de procesamiento
             if lyrics_results:
                 total = len(lyrics_results)
-                recognized = sum(1 for f, r in lyrics_results.items() if r.get("recognition", False))
-                lyrics_found = sum(1 for f, r in lyrics_results.items() if r.get("lyrics_found", False))
-                lyrics_embedded = sum(1 for f, r in lyrics_results.items() if r.get("lyrics_embedded", False))
+                recognized = sum(
+                    1 for f, r in lyrics_results.items() if r.get("recognition", False)
+                )
+                lyrics_found = sum(
+                    1 for f, r in lyrics_results.items() if r.get("lyrics_found", False)
+                )
+                lyrics_embedded = sum(
+                    1
+                    for f, r in lyrics_results.items()
+                    if r.get("lyrics_embedded", False)
+                )
 
                 print("\nResumen:")
                 print(f"Total de archivos procesados: {total}")
@@ -99,7 +114,7 @@ class Cli:
             input("Presiona Enter para salir...")
             return
 
-        files = self.processor.get_audio_files()
+        files = get_audio_files(directory)
 
         if not files:
             print("No se encontraron archivos de audio en este directorio.")
@@ -115,7 +130,9 @@ class Cli:
 
         # Verificar si debemos buscar letras sincronizadas
         if self.args.lyrics:
-            print("Se utilizará la función de búsqueda e incrustación de letras sincronizadas.")
+            print(
+                "Se utilizará la función de búsqueda e incrustación de letras sincronizadas."
+            )
             self._verify_sync_lyrics()
 
         # Renombrar archivos
@@ -128,7 +145,9 @@ class Cli:
         changes = self.processor.rename_files()
 
         if changes:
-            keep_changes = input("¿Desea mantener los cambios de nombre? (Y/N): ").lower()
+            keep_changes = input(
+                "¿Desea mantener los cambios de nombre? (Y/N): "
+            ).lower()
             if keep_changes != "y":
                 self.processor.undo_rename(changes)
                 print("Los cambios de nombre se han revertido.")
