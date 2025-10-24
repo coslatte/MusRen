@@ -25,6 +25,11 @@ setup(
         "syncedlyrics",
         "pyacoustid",
     ],
+    extras_require={
+        "recognition": ["pyacoustid"],
+        "lyrics": ["syncedlyrics"],
+        "musicbrainz": ["musicbrainzngs"],
+    },
     entry_points={
         "console_scripts": [
             "music-renamer=app:main",

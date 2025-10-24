@@ -4,9 +4,6 @@ import platform
 import concurrent.futures
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
-from mutagen import File
-from mutagen.id3 import ID3, USLT
-from mutagen.mp4 import MP4
 
 from utils.tools import get_audio_files
 
@@ -44,7 +41,7 @@ class AudioProcessor:
             dict: Resultados del procesamiento
         """
 
-        files = self.get_audio_files()
+        files = get_audio_files(self.directory)
         results = {}
 
         if not files:
@@ -125,6 +122,11 @@ class AudioProcessor:
         result = {}
 
         # Obtener metadatos actuales
+        try:
+            from mutagen import File
+        except ImportError:
+            return {"status": False, "message": "La biblioteca mutagen no está instalada. Instálela con 'pip install mutagen'."}
+
         audio = File(file_path, easy=True)
         current_artist = (
             audio.get("artist", ["Unknown Artist"])[0] if audio else "Unknown Artist"
@@ -500,6 +502,12 @@ class AudioProcessor:
             if file_path.lower().endswith(".mp3"):
                 # Para archivos MP3 usar ID3
                 try:
+                    from mutagen.id3 import ID3, USLT
+                except ImportError:
+                    print("mutagen no está disponible; no se pueden incrustar letras en MP3")
+                    return False
+
+                try:
                     tags = ID3(file_path)
                 except Exception:
                     tags = ID3()
@@ -518,6 +526,12 @@ class AudioProcessor:
 
             else:
                 # Para otros formatos usar mutagen genérico
+                try:
+                    from mutagen import File
+                except ImportError:
+                    print("mutagen no está disponible; no se pueden incrustar letras")
+                    return False
+
                 audio = File(file_path)
                 if audio is not None:
                     if "lyrics" in audio:
@@ -611,6 +625,12 @@ class AudioProcessor:
 
             elif file_ext in [".flac", ".ogg"]:
                 # Para archivos FLAC y OGG
+                try:
+                    from mutagen import File
+                except ImportError:
+                    print("mutagen no está disponible; no se pueden actualizar metadatos de FLAC/OGG")
+                    return False
+
                 audio = File(file_path)
 
                 # Mapeo de campos
@@ -650,6 +670,12 @@ class AudioProcessor:
 
             elif file_ext == ".m4a":
                 # Para archivos M4A/AAC
+                try:
+                    from mutagen.mp4 import MP4
+                except ImportError:
+                    print("mutagen no está disponible; no se pueden actualizar metadatos de M4A")
+                    return False
+
                 audio = MP4(file_path)
 
                 # Mapeo de campos para M4A
@@ -708,6 +734,12 @@ class AudioProcessor:
 
             else:
                 # Para otros formatos, usar manejo genérico
+                try:
+                    from mutagen import File
+                except ImportError:
+                    print("mutagen no está disponible; no se pueden actualizar metadatos")
+                    return False
+
                 audio = File(file_path)
                 if audio:
                     for key, value in metadata.items():
@@ -749,6 +781,12 @@ class AudioProcessor:
         for file in files:
             try:
                 file_path = os.path.join(self.directory, file)
+                try:
+                    from mutagen import File
+                except ImportError:
+                    print("mutagen no está disponible; no se pueden leer metadatos para renombrar archivos")
+                    continue
+
                 audio = File(file_path, easy=True)
 
                 # Verificar si existen los metadatos necesarios
@@ -791,7 +829,7 @@ class AudioProcessor:
         return changes
 
     def undo_rename(self, changes: dict):
-        files = self.get_audio_files()
+        files = get_audio_files(self.directory)
         for new_name, old_name in changes.items():
             try:
                 # Verificar si el nuevo nombre existe en el directorio

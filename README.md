@@ -1,119 +1,111 @@
 # Music Renamer
 
-Una herramienta para renombrar archivos de música basándose en sus metadatos e incrustar letras sincronizadas.
+Music Renamer its a tool that helps you rename music files based on metadata and optionally embed synchronized lyrics and album art.
 
-## Características Principales
+## Features
 
-- Renombra archivos de música basándose en los metadatos existentes (artista, título)
-- Reconocimiento de canciones usando Chromaprint/AcoustID
-- Completa automáticamente los metadatos para canciones reconocidas (fecha, género, número de pista, etc.)
-- Descarga e incrusta portadas de álbum
-- Busca e incrusta letras sincronizadas (formato LRC)
-- Soporta formatos MP3, FLAC y M4A
+- Rename files using existing metadata (artist, title)
+- Optional audio fingerprint recognition using Chromaprint / AcoustID
+- Fill missing metadata for recognized tracks (date, genre, track number, etc.)
+- Download and embed album artwork
+- Fetch and embed synchronized lyrics (LRC)
+- Supports MP3, FLAC and M4A files
 
-## Instalación
+## Installation
 
-### Prerrequisitos
+### Requirements
 
-- Python 3.6 o superior
-- Las siguientes bibliotecas:
-  - mutagen
-  - requests
-  - syncedlyrics
-  - pyacoustid
-  - musicbrainzngs (opcional, para obtener mejor información de álbumes)
+- Python 3.6 or newer
 
-Puede instalar las dependencias manualmente:
+Core Python packages used by the project are listed in `requirements.txt`. Optional features require extra packages (see below).
 
-```bash
-pip install mutagen requests syncedlyrics pyacoustid musicbrainzngs
+Install core dependencies (recommended for full functionality):
+
+```powershell
+py -3 -m pip install -r requirements.txt
 ```
 
-O puede instalar el paquete completo que se encargará de las dependencias:
+Install in editable mode:
 
-```bash
-pip install -e .
+```powershell
+py -3 -m pip install -e .
+```
+
+Optional features can be installed using pip extras:
+
+```powershell
+# Recognition (pyacoustid)
+py -3 -m pip install -e .[recognition]
+
+# Synchronized lyrics
+py -3 -m pip install -e .[lyrics]
+
+# MusicBrainz support for improved album lookup
+py -3 -m pip install -e .[musicbrainz]
 ```
 
 ### Chromaprint (fpcalc)
 
-Para utilizar la funcionalidad de reconocimiento de canciones, necesitará Chromaprint (comando `fpcalc`).
+To use audio fingerprint recognition you need the `fpcalc` binary (Chromaprint). Install or place `fpcalc` as follows:
 
-- **Windows**: Descargue fpcalc.exe desde [Chromaprint releases](https://github.com/acoustid/chromaprint/releases) y colóquelo en el mismo directorio que este programa.
-- **macOS**: `brew install chromaprint`
-- **Linux**: `apt-get install libchromaprint-tools` o equivalente en su distribución
+- Windows: download `fpcalc.exe` from the Chromaprint releases and either put it in your PATH (recommended) or place it in the project root or the `utils/` directory.
+- macOS: `brew install chromaprint`
+- Linux: `apt-get install libchromaprint-tools` (or use your distro package manager)
 
-## Nueva Estructura del Proyecto
+## Project Layout
 
-El proyecto ahora está organizado de manera encapsulada usando programación orientada a objetos:
-
-```none
-core/                   # Núcleo de funcionalidad
+```
+core/                   # core functionality
 ├── __init__.py
-├── audio_processor.py  # Procesador principal de audio
-└── artwork.py          # Manejo de portadas de álbum
-utils/                  # Utilidades
+├── audio_processor.py  # main audio processing
+└── artwork.py          # album art handling
+utils/                  # helper utilities
 ├── __init__.py
-└── dependencies.py     # Verificación de dependencias
+└── dependencies.py     # dependency helpers and checks
 
-cli.py                      # Interfaz de línea de comandos
-app.py                      # Punto de entrada principal
-install_covers.py           # Script para instalar portadas
-setup.py                    # Configuración de instalación
+cli.py                  # CLI interface
+app.py                  # entrypoint
+install_covers.py       # script to add album covers
+setup.py                # packaging
 ```
 
-## Uso
+## Usage
 
-### Modo Básico
+Basic run (interactive CLI):
 
-Para renombrar archivos de música en el directorio actual:
-
-```bash
-python app.py
+```powershell
+py -3 app.py
 ```
 
-### Con Letras Sincronizadas
+Fetch and embed synchronized lyrics:
 
-Para buscar e incrustar letras sincronizadas:
-
-```bash
-python app.py -l
+```powershell
+py -3 app.py -l
 ```
 
-### Con Reconocimiento de Canciones
+Use recognition (requires pyacoustid and fpcalc):
 
-Para identificar canciones y obtener información completa:
-
-```bash
-python app.py -l --recognition
+```powershell
+py -3 app.py -l --recognition
 ```
 
-### Solo Añadir Portadas
+Add covers only:
 
-Para añadir portadas a archivos existentes:
-
-```bash
-python install_covers.py
+```powershell
+py -3 install_covers.py
 ```
 
-O usando el programa principal:
+You can also run `py -3 app.py --help` for the full list of CLI options.
 
-```bash
-python app.py --only-covers
+## Troubleshooting
+
+If you see errors indicating `fpcalc` is missing, follow the Chromaprint instructions above and ensure `fpcalc` is available in PATH or placed in the project root or `utils/` directory. For Python packages, use the pip extras shown earlier to install optional features.
+
+## Tests
+
+Run unit tests with pytest (install pytest first):
+
+```powershell
+py -3 -m pip install pytest
+py -3 -m pytest -q
 ```
-
-### Opciones Avanzadas
-
-```bash
-python app.py --help
-```
-
-## Resolución de Problemas
-
-### Error de fpcalc no encontrado
-
-Si recibe un error indicando que `fpcalc` no fue encontrado:
-
-1. Descargue el ejecutable adecuado para su sistema desde [Chromaprint releases](https://github.com/acoustid/chromaprint/releases)
-2. Coloque el archivo `fpcalc` o `fpcalc.exe` en el mismo directorio que este programa
-3. Asegúrese de que tiene permisos de ejecución (en sistemas Unix: `chmod +x fpcalc`)

@@ -7,7 +7,6 @@ Usa las clases de la biblioteca encapsulada music_renamer.
 import os
 import argparse
 import concurrent.futures
-from mutagen import File
 from core.artwork import AlbumArtManager
 from utils.tools import get_audio_files
 
@@ -16,6 +15,11 @@ def process_file(file_path, art_manager):
     """Procesa un archivo individual añadiendo portada."""
     try:
         # Obtener metadatos actuales
+        try:
+            from mutagen import File
+        except ImportError:
+            return {"status": False, "error": "La biblioteca mutagen no está instalada."}
+
         audio = File(file_path, easy=True)
         if not audio:
             return {"status": False, "error": "No se pudieron leer los metadatos"}
@@ -39,7 +43,7 @@ def process_file(file_path, art_manager):
             try:
                 tags = ID3(file_path)
                 has_cover = any(frame.startswith("APIC") for frame in tags.keys())
-            except:
+            except Exception:
                 has_cover = False
         elif file_path.lower().endswith(".flac"):
             from mutagen.flac import FLAC
@@ -47,7 +51,7 @@ def process_file(file_path, art_manager):
             try:
                 audio = FLAC(file_path)
                 has_cover = len(audio.pictures) > 0
-            except:
+            except Exception:
                 has_cover = False
         elif file_path.lower().endswith(".m4a"):
             from mutagen.mp4 import MP4
@@ -55,7 +59,7 @@ def process_file(file_path, art_manager):
             try:
                 audio = MP4(file_path)
                 has_cover = "covr" in audio
-            except:
+            except Exception:
                 has_cover = False
 
         # Si ya tiene portada, informar y saltar

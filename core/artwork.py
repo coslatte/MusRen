@@ -3,13 +3,8 @@ Módulo para manejar portadas de álbumes: búsqueda, descarga e incrustación.
 """
 
 import os
-import requests
-from mutagen import File
-from mutagen.id3 import ID3, APIC
-from mutagen.flac import FLAC, Picture
-from mutagen.mp4 import MP4, MP4Cover
 
-from constants.information import MUSIC_RENAMER_VERSION
+from constants.info import MUSIC_RENAMER_VERSION
 
 
 class AlbumArtManager:
@@ -66,6 +61,13 @@ class AlbumArtManager:
 
                     # Verificar si la portada realmente existe antes de devolverla
                     try:
+                        # requests es opcional; importarlo localmente
+                        try:
+                            import requests
+                        except ImportError:
+                            print("requests no está instalado; no se puede verificar Cover Art Archive")
+                            raise
+
                         cover_response = requests.head(cover_url, timeout=5)
                         if cover_response.status_code == 200:
                             return cover_url
@@ -89,8 +91,14 @@ class AlbumArtManager:
             search_term = f"{artist} {album}".replace(" ", "+")
             url = f"https://itunes.apple.com/search?term={search_term}&entity=album&limit=1"
 
-            response = requests.get(url)
-            if response.status_code == 200:
+            try:
+                import requests
+            except ImportError:
+                print("requests no está instalado; no se puede buscar en iTunes")
+                response = None
+            else:
+                response = requests.get(url)
+            if response and response.status_code == 200:
                 data = response.json()
                 if data.get("resultCount", 0) > 0:
                     result = data["results"][0]
@@ -105,8 +113,13 @@ class AlbumArtManager:
             search_term = f"{artist} {album}".replace(" ", "+")
             url = f"https://api.deezer.com/search/album?q={search_term}&limit=1"
 
+            try:
+                import requests
+            except ImportError:
+                print("requests no está instalado; no se puede buscar en Deezer")
+                return None
             response = requests.get(url)
-            if response.status_code == 200:
+            if response and response.status_code == 200:
                 data = response.json()
                 if data.get("total", 0) > 0 and data.get("data"):
                     result = data["data"][0]
@@ -136,6 +149,11 @@ class AlbumArtManager:
 
         try:
             print(f"Descargando portada desde: {url}")
+            try:
+                import requests
+            except ImportError:
+                print("requests no está instalado; no se puede descargar la portada")
+                return None
             response = requests.get(url)
             if response.status_code == 200:
                 content_length = len(response.content)
@@ -207,6 +225,7 @@ class AlbumArtManager:
             # Primera comprobamos las etiquetas existentes para preservarlas
             original_tags = {}
             try:
+                from mutagen.id3 import ID3
                 existing_tags = ID3(file_path)
                 print("Leyendo metadatos existentes para preservarlos")
                 # Guardar todos los frames excepto APIC
@@ -217,6 +236,7 @@ class AlbumArtManager:
                 print(f"No hay etiquetas previas que preservar: {str(e)}")
 
             # Crear nuevas etiquetas
+            from mutagen.id3 import ID3, APIC
             tags = ID3()
 
             # Restaurar etiquetas originales
@@ -258,6 +278,7 @@ class AlbumArtManager:
             bool: True si tuvo éxito
         """
         try:
+            from mutagen.flac import FLAC, Picture
             audio = FLAC(file_path)
 
             # Eliminar imágenes existentes
@@ -299,6 +320,7 @@ class AlbumArtManager:
             bool: True si tuvo éxito
         """
         try:
+            from mutagen.mp4 import MP4, MP4Cover
             audio = MP4(file_path)
 
             # Eliminar portadas existentes

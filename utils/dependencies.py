@@ -6,6 +6,8 @@ import os
 import subprocess
 import sys
 import platform
+import importlib.util
+import shutil
 
 
 def check_dependencies():
@@ -15,39 +17,25 @@ def check_dependencies():
     Returns:
         bool: True si todas las dependencias están disponibles o se instalaron correctamente.
     """
+    # Map Python import names to pip package names when they differ
+    MODULE_TO_PIP = {
+        "mutagen": "mutagen",
+        "requests": "requests",
+        "syncedlyrics": "syncedlyrics",
+        "acoustid": "pyacoustid",
+        "musicbrainzngs": "musicbrainzngs",
+    }
+
+    def is_installed(module_name: str) -> bool:
+        return importlib.util.find_spec(module_name) is not None
+
     missing_deps = []
 
-    # Verificar mutagen
-    try:
-        import mutagen
-
-        print("[OK] mutagen está instalado")
-    except ImportError:
-        missing_deps.append("mutagen")
-
-    # Verificar requests
-    try:
-        import requests
-
-        print("[OK] requests está instalado")
-    except ImportError:
-        missing_deps.append("requests")
-
-    # Verificar syncedlyrics
-    try:
-        import syncedlyrics
-
-        print("[OK] syncedlyrics está instalado")
-    except ImportError:
-        missing_deps.append("syncedlyrics")
-
-    # Verificar pyacoustid
-    try:
-        import acoustid
-
-        print("[OK] pyacoustid está instalado")
-    except ImportError:
-        missing_deps.append("pyacoustid")
+    for mod in ("mutagen", "requests", "syncedlyrics", "acoustid"):
+        if is_installed(mod):
+            print(f"[OK] {mod} está instalado")
+        else:
+            missing_deps.append(MODULE_TO_PIP.get(mod, mod))
 
     # Si hay dependencias faltantes, ofrecer instalarlas
     if missing_deps:
@@ -67,7 +55,7 @@ def check_dependencies():
                 print("\n[OK] Dependencias instaladas correctamente")
 
                 # Si se instaló pyacoustid, verificar fpcalc
-                if "pyacoustid" in missing_deps:
+                if "pyacoustid" in missing_deps or "acoustid" in missing_deps:
                     installed, message = check_acoustid_installation()
                     if not installed:
                         print(f"\n[AVISO] {message}")
@@ -85,7 +73,7 @@ def check_dependencies():
             )
             return False
 
-    # Si llegamos aquí, verificar la instalación de AcoustID
+    # Si llegamos aquí, verificar la instalación de AcoustID (si está presente)
     if check_acoustid_needed():
         installed, message = check_acoustid_installation()
         print(f"\nChromaprint/AcoustID: {message}")
@@ -100,12 +88,7 @@ def check_acoustid_needed():
     Returns:
         bool: True si debemos verificar AcoustID.
     """
-    try:
-        import acoustid
-
-        return True
-    except ImportError:
-        return False
+    return importlib.util.find_spec("acoustid") is not None
 
 
 def check_acoustid_installation():
@@ -116,58 +99,41 @@ def check_acoustid_installation():
         tuple: (instalado, mensaje)
     """
     try:
-        import acoustid
-
-        # Verificar si fpcalc está disponible en el directorio actual
-        script_dir = os.path.dirname(".")
-        os_type = platform.system()
-
-        # Determinar el nombre del ejecutable según el sistema operativo
-        fpcalc_name = "fpcalc.exe" if os_type == "Windows" else "fpcalc"
-
-        # Buscar fpcalc en el directorio actual
-        local_fpcalc = os.path.join(script_dir, fpcalc_name)
-
-        if os.path.exists(local_fpcalc):
-            # Verificar si se puede ejecutar
+        # Primero, comprobar en PATH
+        fp_in_path = shutil.which("fpcalc") or shutil.which("fpcalc.exe")
+        if fp_in_path:
             try:
-                command = [local_fpcalc, "-version"]
-                process = subprocess.Popen(
-                    command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
-                stdout, stderr = process.communicate()
+                result = subprocess.run([fp_in_path, "-version"], capture_output=True, text=True, check=True)
+                version = result.stdout.strip() or result.stderr.strip()
+                return True, f"Chromaprint está instalado en: {fp_in_path} (versión: {version})"
+            except Exception:
+                return True, f"Chromaprint está presente en PATH: {fp_in_path}"
 
-                if process.returncode == 0:
-                    version = stdout.decode("utf-8", errors="ignore").strip()
-                    return (
-                        True,
-                        f"Chromaprint está instalado localmente. Versión: {version}",
-                    )
-                else:
-                    return (
-                        False,
-                        f"Chromaprint está presente pero no puede ejecutarse: {stderr.decode('utf-8', errors='ignore')}",
-                    )
-            except Exception as e:
-                return False, f"Error al verificar fpcalc local: {str(e)}"
+        # Buscar fpcalc en ubicaciones del proyecto
+        script_dir = os.path.abspath(os.path.dirname(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, ".."))
+        os_type = platform.system()
+        fpcalc_name = "fpcalc.exe" if os_type == "Windows" else "fpcalc"
+        candidates = [
+            os.path.join(script_dir, fpcalc_name),
+            os.path.join(project_root, fpcalc_name),
+            os.path.join(project_root, "utils", fpcalc_name),
+            os.path.join(os.getcwd(), fpcalc_name),
+        ]
 
-        # Si no se encuentra localmente, verificar en el PATH
-        try:
-            # Intentar obtener la versión de fpcalc
-            result = subprocess.run(
-                ["fpcalc", "-version"], capture_output=True, text=True, check=True
-            )
-            return (
-                True,
-                "Chromaprint (fpcalc) está correctamente instalado en el PATH del sistema.",
-            )
-        except Exception:
-            return (
-                False,
-                "Chromaprint (fpcalc) no está instalado. Coloque fpcalc.exe en el directorio raíz del proyecto o en la carpeta utils/.",
-            )
-    except ImportError:
-        return (
-            False,
-            "La biblioteca pyacoustid no está instalada. Instálela con 'pip install pyacoustid'.",
-        )
+        for c in candidates:
+            if os.path.exists(c):
+                try:
+                    process = subprocess.Popen([c, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout, stderr = process.communicate()
+                    if process.returncode == 0:
+                        version = stdout.decode("utf-8", errors="ignore").strip()
+                        return True, f"Chromaprint está instalado localmente. Versión: {version}"
+                    else:
+                        return False, f"Chromaprint está presente pero no puede ejecutarse: {stderr.decode('utf-8', errors='ignore')}"
+                except Exception as e:
+                    return False, f"Error al verificar fpcalc local: {str(e)}"
+
+        return False, "Chromaprint (fpcalc) no está instalado. Coloque fpcalc.exe en el directorio raíz del proyecto o en la carpeta utils/, o instale Chromaprint en el sistema."
+    except Exception as e:
+        return False, f"Error verificando Chromaprint: {str(e)}"

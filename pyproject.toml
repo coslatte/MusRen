@@ -1,0 +1,44 @@
+[project]
+name = "music-renamer"
+version = "1.0.0"
+description = "Herramienta para renombrar y gestionar metadatos de archivos de música"
+authors = [
+    { name = "cosLatte", email = "gabrielpazruiz02@gmail.com" }
+]
+maintainers = [
+    { name = "Sataros221", email = "sataros221@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "mutagen>=1.45.1",
+    "requests>=2.28.0",
+    "syncedlyrics>=0.2.1",
+    "pyacoustid>=1.2.2",
+    "musicbrainzngs>=0.7.1",
+]
+
+[project.optional-dependencies]
+recognition = ["pyacoustid>=1.2.2"]
+lyrics = ["syncedlyrics>=0.2.1"]
+musicbrainz = ["musicbrainzngs>=0.7.1"]
+
+[project.scripts]
+music-renamer = "app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "utils", "constants"]
