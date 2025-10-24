@@ -4,12 +4,14 @@ This document helps contributors and automated coding agents work effectively in
 
 ## Project overview
 
-- Stack: Python 3.8+ (CLI utility and small library).
-- Purpose: organize, tag and optionally embed metadata/artwork/lyrics into audio files.
+- Stack: Python 3.8+ backend (CLI + library) and an Electron/TypeScript desktop shell.
+- Purpose: organize, tag and optionally embed metadata/artwork/lyrics into audio files, now with a graphical desktop UI that orchestrates existing Python scripts.
 - Entrypoints:
   - `app.py` — public `main()` entry used by the CLI.
   - `core/` — modules for audio processing: `artwork.py`, `audio_processor.py`, `install_covers.py`, `cli.py`.
   - `utils/` — helper utilities (`dependencies.py`, `tools.py`).
+  - `desktop/backend/` — JSON-over-stdin bridge that exposes safe Python command handlers to Electron.
+  - `desktop/electron/` & `desktop/frontend/` — Electron main process, preload bridge, and renderer UI.
 - Optional binaries: `fpcalc` (Chromaprint) may be required for fingerprinting-based recognition.
 
 ## Run commands (Windows example)
@@ -28,6 +30,16 @@ py -3 -m pip install -r requirements.txt
 # For optional features (recognition, lyrics, musicbrainz):
 py -3 -m pip install .[recognition,lyrics,musicbrainz]
 ```
+
+- Desktop shell:
+
+```powershell
+cd desktop
+npm install
+npm run dev
+```
+
+`npm start` builds once and launches Electron. Set `MUSREN_PYTHON` to point at a custom interpreter when the default `py -3` shim is unavailable.
 
 - Run tests:
 
@@ -103,7 +115,7 @@ Agents (human or automated) should follow a short, repeatable workflow for non-t
 
 When asking an LLM to make code changes in this repo, use a concise template:
 
-```
+```text
 Repository path: <absolute path>
 Goal: <one-sentence goal>
 Constraints:
@@ -122,10 +134,11 @@ Produce:
 
 ## Agent checklist (quick)
 
-- [ ] Did I plan 2–6 steps? 
-- [ ] Did I avoid module-level side effects? 
-- [ ] Did I run import checks and tests? 
-- [ ] Did I produce a small, reversible patch? 
+- [ ] Did I plan 2–6 steps?
+- [ ] Did I avoid module-level side effects?
+- [ ] Did I run import checks and tests?
+- [ ] Did I produce a small, reversible patch?
+
 ```text
 - [ ] Did I plan 2–6 steps?
 - [ ] Did I avoid module-level side effects?

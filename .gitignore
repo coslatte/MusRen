@@ -1,55 +1,39 @@
-# Byte-compiled / optimized / DLL files
+# Python cache & build artifacts
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-build/
-dist/
+*.pyo
+*.orig
 *.egg-info/
-.eggs/
-pip-wheel-metadata/
+.build/
+.pytest_cache/
+.mypy_cache/
 
 # Virtual environments
 .venv/
 venv/
 env/
-ENV/
 
-# Pytest
-.pytest_cache/
+# Desktop (Electron/TypeScript) artifacts
+desktop/node_modules/
+desktop/dist/
+desktop/out/
+desktop/build/
+desktop/release/
+desktop/*.log
+*.tsbuildinfo
 
-# Coverage
-.coverage
-coverage.xml
-htmlcov/
+# Frontend workspace artifacts
+frontend/**/node_modules/
+frontend/**/dist/
+frontend/**/build/
+frontend/**/.next/
+frontend/**/coverage/
+frontend/**/vite.config.ts.timestamp*
+frontend/**/package-lock.json
 
-# Mypy
-.mypy_cache/
+# Logs
+*.log
 
-# Editor directories and files
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# OS files
+# OS noise
 .DS_Store
 Thumbs.db
-
-# Logs and databases
-*.log
-*.sqlite3
-*.db
-
-# Tooling / binaries
-fpcalc.exe
-
-# Optional local agent todo export
-.agent_todos.json
-
-# Misc
-.cache/
