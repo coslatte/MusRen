@@ -23,6 +23,7 @@ dependencies = [
     "syncedlyrics>=0.2.1",
     "pyacoustid>=1.2.2",
     "musicbrainzngs>=0.7.1",
+    "setuptools>=80.9.0",
 ]
 
 [project.optional-dependencies]
