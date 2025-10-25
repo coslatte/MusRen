@@ -4,10 +4,9 @@ def main() -> None:
     Imports the CLI implementation lazily so importing `app` doesn't
     require all optional runtime dependencies to be installed.
     """
-    from core.cli import Cli
+    from core.cli_typer import app as typer_app
 
-    cli = Cli()
-    cli.main()
+    typer_app()
 
 
 if __name__ == "__main__":

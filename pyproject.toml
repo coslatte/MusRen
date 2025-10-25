@@ -24,6 +24,8 @@ dependencies = [
     "pyacoustid>=1.2.2",
     "musicbrainzngs>=0.7.1",
     "setuptools>=80.9.0",
+    "typer>=0.20.0",
+    "python-dotenv>=1.1.1",
 ]
 
 [project.optional-dependencies]
