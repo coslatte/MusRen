@@ -285,7 +285,6 @@ def add_covers(directory: Path) -> None:
         import core.install_covers as install_covers
 
         install_covers.run(str(directory))
-        return True
     except ImportError as e:
         raise RuntimeError(
             "No se pudo importar el módulo de instalación de portadas."
