@@ -103,9 +103,14 @@ def check_acoustid_installation():
         fp_in_path = shutil.which("fpcalc") or shutil.which("fpcalc.exe")
         if fp_in_path:
             try:
-                result = subprocess.run([fp_in_path, "-version"], capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    [fp_in_path, "-version"], capture_output=True, text=True, check=True
+                )
                 version = result.stdout.strip() or result.stderr.strip()
-                return True, f"Chromaprint está instalado en: {fp_in_path} (versión: {version})"
+                return (
+                    True,
+                    f"Chromaprint está instalado en: {fp_in_path} (versión: {version})",
+                )
             except Exception:
                 return True, f"Chromaprint está presente en PATH: {fp_in_path}"
 
@@ -124,16 +129,27 @@ def check_acoustid_installation():
         for c in candidates:
             if os.path.exists(c):
                 try:
-                    process = subprocess.Popen([c, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    process = subprocess.Popen(
+                        [c, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    )
                     stdout, stderr = process.communicate()
                     if process.returncode == 0:
                         version = stdout.decode("utf-8", errors="ignore").strip()
-                        return True, f"Chromaprint está instalado localmente. Versión: {version}"
+                        return (
+                            True,
+                            f"Chromaprint está instalado localmente. Versión: {version}",
+                        )
                     else:
-                        return False, f"Chromaprint está presente pero no puede ejecutarse: {stderr.decode('utf-8', errors='ignore')}"
+                        return (
+                            False,
+                            f"Chromaprint está presente pero no puede ejecutarse: {stderr.decode('utf-8', errors='ignore')}",
+                        )
                 except Exception as e:
                     return False, f"Error al verificar fpcalc local: {str(e)}"
 
-        return False, "Chromaprint (fpcalc) no está instalado. Coloque fpcalc.exe en el directorio raíz del proyecto o en la carpeta utils/, o instale Chromaprint en el sistema."
+        return (
+            False,
+            "Chromaprint (fpcalc) no está instalado. Coloque fpcalc.exe en el directorio raíz del proyecto o en la carpeta utils/, o instale Chromaprint en el sistema.",
+        )
     except Exception as e:
         return False, f"Error verificando Chromaprint: {str(e)}"

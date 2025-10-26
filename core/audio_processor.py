@@ -45,10 +45,7 @@ class AudioProcessor:
         results = {}
 
         if not files:
-            print("No se encontraron archivos de audio en este directorio.")
             return results
-
-        print(f"Se encontraron {len(files)} archivos de audio.")
 
         if process_lyrics:
             results = self._process_files_with_lyrics(files, use_recognition)
@@ -68,7 +65,6 @@ class AudioProcessor:
         """
 
         results = {}
-        print(f"Procesando {len(files)} archivos para añadir letras sincronizadas...")
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_file = {
@@ -86,23 +82,7 @@ class AudioProcessor:
                     result = future.result()
                     results[file] = result
 
-                    # Mostrar resumen del resultado
-                    if result.get("recognition", False):
-                        print(
-                            f"[OK] Reconocido: {file} -> {result.get('artist', '')} - {result.get('title', '')}"
-                        )
-
-                    if result.get("lyrics_found", False) and result.get(
-                        "lyrics_embedded", False
-                    ):
-                        print(f"[OK] Letras incrustadas: {file}")
-                    elif not result.get("lyrics_found", False):
-                        print(f"[ERROR] No se encontraron letras para: {file}")
-                    elif not result.get("lyrics_embedded", False):
-                        print(f"[ERROR] Error al incrustar letras en: {file}")
-
                 except Exception as e:
-                    print(f"Error al procesar {file}: {str(e)}")
                     results[file] = {"error": str(e)}
 
         return results
@@ -125,7 +105,10 @@ class AudioProcessor:
         try:
             from mutagen import File
         except ImportError:
-            return {"status": False, "message": "La biblioteca mutagen no está instalada. Instálela con 'pip install mutagen'."}
+            return {
+                "status": False,
+                "message": "La biblioteca mutagen no está instalada. Instálela con 'pip install mutagen'.",
+            }
 
         audio = File(file_path, easy=True)
         current_artist = (
@@ -152,37 +135,9 @@ class AudioProcessor:
                 result["score"] = recognition.get("score", 0)
 
                 # Actualizar metadatos completos del archivo
-                print(f"Actualizando metadatos para: {os.path.basename(file_path)}")
                 update_success = self._update_audio_metadata(file_path, recognition)
                 result["metadata_updated"] = update_success
-
-                if update_success:
-                    print(f"[OK] Metadatos actualizados: {os.path.basename(file_path)}")
-
-                    # Mensajes informativos sobre metadatos encontrados
-                    metadata_fields = []
-                    for field in [
-                        "artist",
-                        "title",
-                        "album",
-                        "date",
-                        "genre",
-                        "tracknumber",
-                        "discnumber",
-                        "albumartist",
-                    ]:
-                        if field in recognition:
-                            metadata_fields.append(field)
-
-                    if metadata_fields:
-                        print(f"  Campos actualizados: {', '.join(metadata_fields)}")
-
-                    if "cover_url" in recognition:
-                        print("    Portada del álbum: encontrada e incrustada")
-                else:
-                    print(
-                        f"[ERROR] Error al actualizar metadatos: {os.path.basename(file_path)}"
-                    )
+                # La presentación de resultados se maneja en la CLI
 
                 # Usar los metadatos reconocidos para buscar letras
                 artist_for_lyrics = recognition.get("artist", "")
@@ -227,7 +182,7 @@ class AudioProcessor:
         """
 
         try:
-            print(f"Reconociendo canción: {os.path.basename(file_path)}...")
+            # Reconocimiento de canción (mensajes de estado en CLI)
 
             # Importar acoustid
             try:
@@ -254,7 +209,6 @@ class AudioProcessor:
             try:
                 # Intentar generar la huella acústica usando el fpcalc local o del sistema
                 if os.path.exists(local_fpcalc):
-                    print(f"Usando fpcalc local: {local_fpcalc}")
                     # Usar directamente el binario local
                     command = [local_fpcalc, "-json", file_path]
                     process = subprocess.Popen(
@@ -422,8 +376,7 @@ class AudioProcessor:
                                 )
                                 if cover_url:
                                     metadata["cover_url"] = cover_url
-                            except Exception as e:
-                                print(f"Error al buscar portada: {str(e)}")
+                            except Exception:
                                 # Si falla la obtención de la portada, continuamos sin ella
                                 pass
 
@@ -459,7 +412,7 @@ class AudioProcessor:
             dict: Letras sincronizadas o mensaje de error
         """
         try:
-            print(f"Buscando letras sincronizadas para: {artist} - {title}...")
+            # Búsqueda de letras (mensajes de estado en CLI)
             import syncedlyrics
 
             search_term = f"{artist} {title}"
@@ -497,14 +450,13 @@ class AudioProcessor:
             bool: True si se incrustaron correctamente
         """
         try:
-            print(f"Incrustando letras en: {os.path.basename(file_path)}...")
+            # Incrustando letras (mensajes de estado en CLI)
 
             if file_path.lower().endswith(".mp3"):
                 # Para archivos MP3 usar ID3
                 try:
                     from mutagen.id3 import ID3, USLT
                 except ImportError:
-                    print("mutagen no está disponible; no se pueden incrustar letras en MP3")
                     return False
 
                 try:
@@ -529,7 +481,6 @@ class AudioProcessor:
                 try:
                     from mutagen import File
                 except ImportError:
-                    print("mutagen no está disponible; no se pueden incrustar letras")
                     return False
 
                 audio = File(file_path)
@@ -543,8 +494,7 @@ class AudioProcessor:
                 else:
                     return False
 
-        except Exception as e:
-            print(f"Error al incrustar letras: {str(e)}")
+        except Exception:
             return False
 
     def _update_audio_metadata(self, file_path, metadata):
@@ -578,8 +528,7 @@ class AudioProcessor:
                     )
 
                     tags = ID3(file_path)
-                except Exception as e:
-                    print(e)
+                except Exception:
                     tags = ID3()
 
                 # Actualizar metadatos básicos
@@ -628,7 +577,6 @@ class AudioProcessor:
                 try:
                     from mutagen import File
                 except ImportError:
-                    print("mutagen no está disponible; no se pueden actualizar metadatos de FLAC/OGG")
                     return False
 
                 audio = File(file_path)
@@ -673,7 +621,6 @@ class AudioProcessor:
                 try:
                     from mutagen.mp4 import MP4
                 except ImportError:
-                    print("mutagen no está disponible; no se pueden actualizar metadatos de M4A")
                     return False
 
                 audio = MP4(file_path)
@@ -737,7 +684,6 @@ class AudioProcessor:
                 try:
                     from mutagen import File
                 except ImportError:
-                    print("mutagen no está disponible; no se pueden actualizar metadatos")
                     return False
 
                 audio = File(file_path)
@@ -761,8 +707,7 @@ class AudioProcessor:
 
                 return False
 
-        except Exception as e:
-            print(f"Error al actualizar metadatos: {str(e)}")
+        except Exception:
             return False
 
     def rename_files(self):
@@ -784,16 +729,12 @@ class AudioProcessor:
                 try:
                     from mutagen import File
                 except ImportError:
-                    print("mutagen no está disponible; no se pueden leer metadatos para renombrar archivos")
                     continue
 
                 audio = File(file_path, easy=True)
 
                 # Verificar si existen los metadatos necesarios
                 if not audio or not audio.tags:
-                    print(
-                        f"[ADVERTENCIA] No se renombró {file}: No se encontraron metadatos"
-                    )
                     continue
 
                 artist = audio.get("artist", [""])[0]
@@ -806,9 +747,6 @@ class AudioProcessor:
                     or artist == "Unknown Artist"
                     or title == "Unknown Title"
                 ):
-                    print(
-                        f"[ADVERTENCIA] No se renombró {file}: Faltan metadatos de artista o título"
-                    )
                     continue
 
                 # Artista - Título.formato (.mp3, .flac, etc..)
@@ -817,14 +755,10 @@ class AudioProcessor:
                 actual_new_name, changed = self._safe_rename(file, new_name)
                 if changed:
                     changes[actual_new_name] = file
-                    print(f"[OK] Renombrado: {file} -> {actual_new_name}")
-            except Exception as e:
-                print(f"[ERROR] Error al procesar {file}: {str(e)}")
+            except Exception:
+                pass
 
-        if not changes:
-            print(
-                "\nNo se realizó ningún renombrado. Todos los archivos carecían de metadatos necesarios."
-            )
+        # La CLI mostrará el resumen de renombrados
 
         return changes
 
@@ -834,14 +768,9 @@ class AudioProcessor:
             try:
                 # Verificar si el nuevo nombre existe en el directorio
                 if new_name in files:
-                    print(f"Deshaciendo renombrado: {new_name} -> {old_name}")
                     self._safe_rename(new_name, old_name)
-                else:
-                    print(
-                        f"El archivo {new_name} no existe para deshacer el renombrado."
-                    )
-            except Exception as e:
-                print(f"Error al deshacer renombrado: {str(e)}")
+            except Exception:
+                pass
 
     def _safe_rename(self, old_name, new_name):
         """
@@ -874,8 +803,7 @@ class AudioProcessor:
         try:
             os.rename(old_path, new_path)
             return new_name, True
-        except OSError as e:
-            print(f"No se pudo renombrar '{old_name}' a '{new_name}'. Error: {e}")
+        except OSError:
             return old_name, False
 
     def _sanitize_filename(self, filename):

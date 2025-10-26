@@ -5,7 +5,6 @@ Usa las clases de la biblioteca encapsulada music_renamer.
 """
 
 import os
-import argparse
 import concurrent.futures
 from core.artwork import AlbumArtManager
 from utils.tools import get_audio_files
@@ -18,7 +17,10 @@ def process_file(file_path, art_manager):
         try:
             from mutagen import File
         except ImportError:
-            return {"status": False, "error": "La biblioteca mutagen no está instalada."}
+            return {
+                "status": False,
+                "error": "La biblioteca mutagen no está instalada.",
+            }
 
         audio = File(file_path, easy=True)
         if not audio:
@@ -92,25 +94,13 @@ def process_file(file_path, art_manager):
         return {"status": False, "error": str(e)}
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Añade portadas a archivos de música existentes."
-    )
-    parser.add_argument(
-        "-d",
-        "--directory",
-        help="Directorio donde se encuentran los archivos de audio",
-        default=".",
-    )
-    parser.add_argument(
-        "--max-workers",
-        help="Número máximo de trabajadores concurrentes",
-        type=int,
-        default=4,
-    )
-    args = parser.parse_args()
+def run(directory: str, max_workers: int = 4) -> None:
+    """Ejecuta el proceso de instalación de portadas sin usar argparse.
 
-    directory = os.path.abspath(args.directory)
+    Pensado para ser llamado desde otras partes del código (p. ej., Typer CLI)
+    sin conflictos de argumentos.
+    """
+    directory = os.path.abspath(directory)
     print(f"Directorio de trabajo: {directory}")
 
     # Obtener archivos de audio
@@ -127,9 +117,7 @@ def main():
     # Procesar archivos en paralelo
     results = {"success": 0, "skipped": 0, "failed": 0}
 
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=args.max_workers
-    ) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_file = {
             executor.submit(
                 process_file, os.path.join(directory, file), art_manager
@@ -159,7 +147,3 @@ def main():
     print(f"Portadas añadidas correctamente: {results['success']}")
     print(f"Archivos que ya tenían portada: {results['skipped']}")
     print(f"Archivos con errores: {results['failed']}")
-
-
-if __name__ == "__main__":
-    main()
