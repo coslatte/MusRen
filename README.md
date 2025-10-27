@@ -44,6 +44,20 @@ py -3 -m pip install -e .[lyrics]
 py -3 -m pip install -e .[musicbrainz]
 ```
 
+### Virtual Environment for Development (CLI)
+
+For developing or running the CLI, we recommend using a local virtual environment to isolate dependencies. A common name is `.venv`.
+
+In Windows PowerShell:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+py -3 -m pip install -r requirements.txt
+```
+
+Once activated, run `py -3 app.py` or install in editable mode with `py -3 -m pip install -e .`.
+
 ### Chromaprint (fpcalc)
 
 To use audio fingerprint recognition you need the `fpcalc` binary (Chromaprint). Install or place `fpcalc` as follows:
@@ -54,7 +68,7 @@ To use audio fingerprint recognition you need the `fpcalc` binary (Chromaprint).
 
 ## Project Layout
 
-```
+```text
 core/                   # core functionality
 ├── __init__.py
 ├── audio_processor.py  # main audio processing

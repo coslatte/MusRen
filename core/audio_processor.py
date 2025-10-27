@@ -10,18 +10,17 @@ from utils.tools import get_audio_files
 
 class AudioProcessor:
     """
-    Clase principal para procesar archivos de audio: reconocimiento,
-    metadatos, letras sincronizadas y portadas de álbum.
+    Main class for processing audio files: recognition, metadata, synchronized lyrics and album covers.
     """
 
     def __init__(self, directory=".", acoustid_api_key="8XaBELgH", max_workers=4):
         """
-        Inicializa el procesador de audio.
+        Initializes the audio processor.
 
         Args:
-            directory (str): Directorio donde se encuentran los archivos de audio
-            acoustid_api_key (str): Clave API para AcoustID
-            max_workers (int): Número máximo de trabajadores para procesamiento concurrente
+            directory (str): Directory where audio files are located
+            acoustid_api_key (str): API key for AcoustID
+            max_workers (int): Maximum number of workers for concurrent processing
         """
 
         self.directory = os.path.abspath(directory)
@@ -31,14 +30,14 @@ class AudioProcessor:
 
     def process_files(self, use_recognition=False, process_lyrics=False):
         """
-        Procesa todos los archivos de audio en el directorio.
+        Processes all audio files in the directory.
 
         Args:
-            use_recognition (bool): Si debe usar reconocimiento de audio
-            process_lyrics (bool): Si debe procesar letras sincronizadas
+            use_recognition (bool): Whether to use audio recognition
+            process_lyrics (bool): Whether to process synchronized lyrics
 
         Returns:
-            dict: Resultados del procesamiento
+            dict: Processing results
         """
 
         files = get_audio_files(self.directory)
@@ -54,14 +53,14 @@ class AudioProcessor:
 
     def _process_files_with_lyrics(self, files, use_recognition):
         """
-        Procesa múltiples archivos para añadir letras sincronizadas.
+        Processes multiple files to add synchronized lyrics.
 
         Args:
-            files (list): Lista de archivos a procesar
-            use_recognition (bool): Si debe usar reconocimiento de audio
+            files (list): List of files to process
+            use_recognition (bool): Whether to use audio recognition
 
         Returns:
-            dict: Resultados del procesamiento
+            dict: Processing results
         """
 
         results = {}
@@ -89,25 +88,25 @@ class AudioProcessor:
 
     def _process_file_with_lyrics(self, file_path, use_recognition):
         """
-        Procesa un archivo individual: reconoce la canción y le incrusta letras sincronizadas.
+        Processes an individual file: recognizes the song and embeds synchronized lyrics.
 
         Args:
-            file_path (str): Ruta al archivo de audio
-            use_recognition (bool): Si debe usar reconocimiento de audio
+            file_path (str): Path to the audio file
+            use_recognition (bool): Whether to use audio recognition
 
         Returns:
-            dict: Resultado del procesamiento
+            dict: Processing result
         """
 
         result = {}
 
-        # Obtener metadatos actuales
+        # Get current metadata
         try:
             from mutagen import File
         except ImportError:
             return {
                 "status": False,
-                "message": "La biblioteca mutagen no está instalada. Instálela con 'pip install mutagen'.",
+                "message": "The mutagen library is not installed. Install it with 'pip install mutagen'.",
             }
 
         audio = File(file_path, easy=True)
@@ -118,13 +117,13 @@ class AudioProcessor:
             audio.get("title", ["Unknown Title"])[0] if audio else "Unknown Title"
         )
 
-        # Si se solicitó reconocimiento por AcoustID y los metadatos son insuficientes
+        # If AcoustID recognition was requested and metadata is insufficient
         needs_recognition = use_recognition and (
             current_artist == "Unknown Artist" or current_title == "Unknown Title"
         )
 
         if needs_recognition:
-            # Implementar la lógica de reconocimiento aquí
+            # Implement recognition logic here
             recognition = self._recognize_song(file_path)
 
             if recognition["status"]:
@@ -134,18 +133,18 @@ class AudioProcessor:
                 result["album"] = recognition.get("album", "")
                 result["score"] = recognition.get("score", 0)
 
-                # Actualizar metadatos completos del archivo
+                # Update complete file metadata
                 update_success = self._update_audio_metadata(file_path, recognition)
                 result["metadata_updated"] = update_success
-                # La presentación de resultados se maneja en la CLI
+                # Result presentation is handled in the CLI
 
-                # Usar los metadatos reconocidos para buscar letras
+                # Use recognized metadata to search for lyrics
                 artist_for_lyrics = recognition.get("artist", "")
                 title_for_lyrics = recognition.get("title", "")
             else:
                 result["recognition"] = False
                 result["recognition_error"] = recognition.get(
-                    "message", "Error desconocido"
+                    "message", "Unknown error"
                 )
                 artist_for_lyrics = current_artist
                 title_for_lyrics = current_title
@@ -153,63 +152,63 @@ class AudioProcessor:
             artist_for_lyrics = current_artist
             title_for_lyrics = current_title
 
-        # Buscar letras sincronizadas
+        # Search for synchronized lyrics
         lyrics_result = self._fetch_synced_lyrics(artist_for_lyrics, title_for_lyrics)
 
         if lyrics_result["status"]:
             result["lyrics_found"] = True
-            # Incrustar letras en el archivo
+            # Embed lyrics in the file
             if self._embed_lyrics(file_path, lyrics_result["lyrics"]):
                 result["lyrics_embedded"] = True
             else:
                 result["lyrics_embedded"] = False
-                result["embed_error"] = "Error al incrustar letras"
+                result["embed_error"] = "Error embedding lyrics"
         else:
             result["lyrics_found"] = False
-            result["lyrics_error"] = lyrics_result.get("message", "Error desconocido")
+            result["lyrics_error"] = lyrics_result.get("message", "Unknown error")
 
         return result
 
     def _recognize_song(self, file_path):
         """
-        Reconoce una canción utilizando Chromaprint/AcoustID.
+        Recognizes a song using Chromaprint/AcoustID.
 
         Args:
-            file_path (str): Ruta al archivo de audio
+            file_path (str): Path to the audio file
 
         Returns:
-            dict: Información de la canción reconocida
+            dict: Recognized song information
         """
 
         try:
-            # Reconocimiento de canción (mensajes de estado en CLI)
+            # Song recognition (status messages in CLI)
 
-            # Importar acoustid
+            # Import acoustid
             try:
                 import acoustid
             except ImportError:
                 return {
                     "status": False,
-                    "message": "La biblioteca pyacoustid no está instalada. Instálela con 'pip install pyacoustid'",
+                    "message": "The pyacoustid library is not installed. Install it with 'pip install pyacoustid'",
                 }
 
-            # Verificar si fpcalc (Chromaprint) está disponible
-            # Primero intentamos usar el fpcalc del directorio actual
+            # Check if fpcalc (Chromaprint) is available
+            # First try to use fpcalc from current directory
             script_dir = os.path.dirname(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             )
             os_type = self.os_type
 
-            # Determinar el nombre del ejecutable según el sistema operativo
+            # Determine executable name based on operating system
             fpcalc_name = "fpcalc.exe" if os_type == "Windows" else "fpcalc"
 
-            # Buscar fpcalc en el directorio actual
+            # Search for fpcalc in current directory
             local_fpcalc = os.path.join(script_dir, fpcalc_name)
 
             try:
-                # Intentar generar la huella acústica usando el fpcalc local o del sistema
+                # Try to generate acoustic fingerprint using local or system fpcalc
                 if os.path.exists(local_fpcalc):
-                    # Usar directamente el binario local
+                    # Use local binary directly
                     command = [local_fpcalc, "-json", file_path]
                     process = subprocess.Popen(
                         command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -219,10 +218,10 @@ class AudioProcessor:
                     if process.returncode != 0:
                         return {
                             "status": False,
-                            "message": f"Error al ejecutar fpcalc: {stderr.decode('utf-8', errors='ignore')}",
+                            "message": f"Error executing fpcalc: {stderr.decode('utf-8', errors='ignore')}",
                         }
 
-                    # Parsear la salida JSON
+                    # Parse JSON output
                     import json
 
                     result = json.loads(stdout.decode("utf-8", errors="ignore"))
@@ -232,21 +231,21 @@ class AudioProcessor:
                     if not fingerprint:
                         return {
                             "status": False,
-                            "message": "No se pudo obtener la huella acústica del archivo.",
+                            "message": "Could not obtain the acoustic fingerprint of the file.",
                         }
                 else:
-                    # Usar la función estándar de la biblioteca
+                    # Use standard library function
                     duration, fingerprint = acoustid.fingerprint_file(file_path)
             except Exception as e:
                 return {
                     "status": False,
-                    "message": f"No se pudo generar la huella acústica: {str(e)}. Asegúrese de que Chromaprint (fpcalc) esté instalado.",
+                    "message": f"Could not generate acoustic fingerprint: {str(e)}. Make sure Chromaprint (fpcalc) is installed.",
                 }
 
-            # Buscar coincidencias en la base de datos de AcoustID con metadatos extendidos
+            # Search for matches in AcoustID database with extended metadata
             try:
-                # api_key gratuita para uso general, pero se recomienda que los usuarios obtengan su propia clave
-                # Solicitamos más metadatos incluyendo tags, genres, y releases para obtener información completa
+                # Free api_key for general use, but users are recommended to get their own key
+                # Request more metadata including tags, genres, and releases for complete information
                 results = acoustid.lookup(
                     self.acoustid_api_key,
                     fingerprint,
@@ -254,23 +253,23 @@ class AudioProcessor:
                     meta="recordings releasegroups releases tracks artists tags genres",
                 )
 
-                # Procesar los resultados
+                # Process the results
                 if results and "results" in results and results["results"]:
-                    # Obtener el primer resultado con la mayor puntuación
+                    # Get the first result with the highest score
                     best_result = results["results"][0]
 
-                    # Extraer información del resultado
+                    # Extract information from the result
                     if "recordings" in best_result and best_result["recordings"]:
                         recording = best_result["recordings"][0]
 
-                        # Información básica
+                        # Basic information
                         metadata = {
                             "status": True,
                             "score": best_result.get("score", 0),
                             "acoustid": best_result.get("id", ""),
                         }
 
-                        # Extraer artista
+                        # Extract artist
                         artists = []
                         if "artists" in recording and recording["artists"]:
                             for artist in recording["artists"]:
@@ -278,32 +277,32 @@ class AudioProcessor:
                             metadata["artist"] = artists[0]
                             metadata["artists"] = artists
                         else:
-                            metadata["artist"] = "Artista Desconocido"
-                            metadata["artists"] = ["Artista Desconocido"]
+                            metadata["artist"] = "Unknown Artist"
+                            metadata["artists"] = ["Unknown Artist"]
 
-                        # Extraer título
-                        metadata["title"] = recording.get("title", "Título Desconocido")
+                        # Extract title
+                        metadata["title"] = recording.get("title", "Unknown Title")
 
-                        # Extraer álbum
+                        # Extract album
                         if "releasegroups" in recording and recording["releasegroups"]:
                             releasegroup = recording["releasegroups"][0]
                             metadata["album"] = releasegroup.get(
-                                "title", "Álbum Desconocido"
+                                "title", "Unknown Album"
                             )
 
-                            # Artista del álbum
+                            # Album artist
                             if "artists" in releasegroup and releasegroup["artists"]:
                                 metadata["albumartist"] = releasegroup["artists"][0][
                                     "name"
                                 ]
 
-                            # Tipo de álbum
+                            # Album type
                             if "type" in releasegroup:
                                 metadata["albumtype"] = releasegroup.get("type")
 
-                            # Fecha de lanzamiento
+                            # Release date
                             if "releases" in recording and recording["releases"]:
-                                # Buscar todas las releases de este releasegroup
+                                # Search for all releases of this releasegroup
                                 matching_releases = [
                                     r
                                     for r in recording["releases"]
@@ -318,12 +317,12 @@ class AudioProcessor:
                                         if r.get("date")
                                     ]
                                     if release_dates:
-                                        # Usar la fecha más antigua como fecha del álbum
+                                        # Use the earliest date as album date
                                         metadata["date"] = min(release_dates)
                         else:
-                            metadata["album"] = "Álbum Desconocido"
+                            metadata["album"] = "Unknown Album"
 
-                        # Extraer número de pista y disco
+                        # Extract track and disc number
                         if "releases" in recording and recording["releases"]:
                             for release in recording["releases"]:
                                 if "mediums" in release:
@@ -346,7 +345,7 @@ class AudioProcessor:
                                                         release.get("medium-count", "")
                                                     )
 
-                        # Extraer género
+                        # Extract genre
                         genres = []
                         if "genres" in recording:
                             for genre in recording["genres"]:
@@ -355,7 +354,7 @@ class AudioProcessor:
                                 metadata["genre"] = genres[0]
                                 metadata["genres"] = genres
 
-                        # Extraer etiquetas adicionales
+                        # Extract additional tags
                         tags = []
                         if "tags" in recording:
                             for tag in recording["tags"]:
@@ -363,10 +362,10 @@ class AudioProcessor:
                             if tags:
                                 metadata["tags"] = tags
 
-                        # Después de extraer los metadatos, buscar la portada del álbum usando un servicio alternativo
+                        # After extracting metadata, search for album cover using an alternative service
                         if "artist" in metadata and "album" in metadata:
                             try:
-                                # Importar el gestor de portadas
+                                # Import album art manager
                                 from core.artwork import AlbumArtManager
 
                                 art_manager = AlbumArtManager()
@@ -377,42 +376,42 @@ class AudioProcessor:
                                 if cover_url:
                                     metadata["cover_url"] = cover_url
                             except Exception:
-                                # Si falla la obtención de la portada, continuamos sin ella
+                                # If cover fetching fails, continue without it
                                 pass
 
                         return metadata
 
-                # Si no se encontraron coincidencias
+                # If no matches were found
                 return {
                     "status": False,
-                    "message": "No se encontraron coincidencias en la base de datos",
+                    "message": "No matches found in the database",
                 }
 
             except acoustid.WebServiceError as e:
                 return {
                     "status": False,
-                    "message": f"Error del servicio web AcoustID: {str(e)}",
+                    "message": f"AcoustID web service error: {str(e)}",
                 }
 
         except Exception as e:
             return {
                 "status": False,
-                "message": f"Error al reconocer la canción: {str(e)}",
+                "message": f"Error recognizing the song: {str(e)}",
             }
 
     def _fetch_synced_lyrics(self, artist, title):
         """
-        Busca letras sincronizadas usando la biblioteca syncedlyrics.
+        Searches for synchronized lyrics using the syncedlyrics library.
 
         Args:
-            artist (str): Nombre del artista
-            title (str): Título de la canción
+            artist (str): Artist name
+            title (str): Song title
 
         Returns:
-            dict: Letras sincronizadas o mensaje de error
+            dict: Synchronized lyrics or error message
         """
         try:
-            # Búsqueda de letras (mensajes de estado en CLI)
+            # Lyrics search (status messages in CLI)
             import syncedlyrics
 
             search_term = f"{artist} {title}"
@@ -423,37 +422,37 @@ class AudioProcessor:
             else:
                 return {
                     "status": False,
-                    "message": "No se encontraron letras sincronizadas",
+                    "message": "No synchronized lyrics found",
                 }
 
         except ImportError:
             return {
                 "status": False,
-                "message": "La biblioteca syncedlyrics no está instalada. Instálela con 'pip install syncedlyrics'",
+                "message": "The syncedlyrics library is not installed. Install it with 'pip install syncedlyrics'",
             }
         except Exception as e:
             return {
                 "status": False,
-                "message": f"Error al buscar letras sincronizadas: {str(e)}",
+                "message": f"Error searching for synchronized lyrics: {str(e)}",
             }
 
     def _embed_lyrics(self, file_path, lyrics_content, is_synced=True):
         """
-        Incrusta letras en el archivo de audio.
+        Embeds lyrics in the audio file.
 
         Args:
-            file_path (str): Ruta al archivo de audio
-            lyrics_content (str): Contenido de las letras
-            is_synced (bool): Si las letras están sincronizadas
+            file_path (str): Path to the audio file
+            lyrics_content (str): Lyrics content
+            is_synced (bool): Whether lyrics are synchronized
 
         Returns:
-            bool: True si se incrustaron correctamente
+            bool: True if embedded successfully
         """
         try:
-            # Incrustando letras (mensajes de estado en CLI)
+            # Embedding lyrics (status messages in CLI)
 
             if file_path.lower().endswith(".mp3"):
-                # Para archivos MP3 usar ID3
+                # For MP3 files use ID3
                 try:
                     from mutagen.id3 import ID3, USLT
                 except ImportError:
@@ -464,11 +463,11 @@ class AudioProcessor:
                 except Exception:
                     tags = ID3()
 
-                # Eliminar letras existentes
+                # Remove existing lyrics
                 if len(tags.getall("USLT")) > 0:
                     tags.delall("USLT")
 
-                # Agregar nuevas letras
+                # Add new lyrics
                 tags["USLT::'eng'"] = USLT(
                     encoding=3, lang="eng", desc="Lyrics", text=lyrics_content
                 )
@@ -477,7 +476,7 @@ class AudioProcessor:
                 return True
 
             else:
-                # Para otros formatos usar mutagen genérico
+                # For other formats use generic mutagen
                 try:
                     from mutagen import File
                 except ImportError:
@@ -499,20 +498,20 @@ class AudioProcessor:
 
     def _update_audio_metadata(self, file_path, metadata):
         """
-        Actualiza todos los metadatos disponibles en el archivo de audio.
+        Updates all available metadata in the audio file.
 
         Args:
-            file_path (str): Ruta al archivo de audio
-            metadata (dict): Metadatos a actualizar
+            file_path (str): Path to the audio file
+            metadata (dict): Metadata to update
 
         Returns:
-            bool: True si se actualizaron correctamente
+            bool: True if updated successfully
         """
         try:
             file_ext = os.path.splitext(file_path)[1].lower()
 
             if file_ext == ".mp3":
-                # Para archivos MP3 usar ID3
+                # For MP3 files use ID3
                 try:
                     from mutagen.id3 import (
                         ID3,
@@ -531,7 +530,7 @@ class AudioProcessor:
                 except Exception:
                     tags = ID3()
 
-                # Actualizar metadatos básicos
+                # Update basic metadata
                 if "title" in metadata:
                     tags["TIT2"] = TIT2(encoding=3, text=metadata["title"])
                 if "artist" in metadata:
@@ -559,9 +558,9 @@ class AudioProcessor:
 
                 tags.save(file_path)
 
-                # Si hay URL de portada, descargar e incrustar
+                # If there's cover URL, download and embed
                 if "cover_url" in metadata:
-                    # Importar el gestor de portadas
+                    # Import album art manager
                     from core.artwork import AlbumArtManager
 
                     art_manager = AlbumArtManager()
@@ -573,7 +572,7 @@ class AudioProcessor:
                 return True
 
             elif file_ext in [".flac", ".ogg"]:
-                # Para archivos FLAC y OGG
+                # For FLAC and OGG files
                 try:
                     from mutagen import File
                 except ImportError:
@@ -581,7 +580,7 @@ class AudioProcessor:
 
                 audio = File(file_path)
 
-                # Mapeo de campos
+                # Field mapping
                 field_mapping = {
                     "title": "title",
                     "artist": "artist",
@@ -596,16 +595,16 @@ class AudioProcessor:
                     "composer": "composer",
                 }
 
-                # Actualizar metadatos
+                # Update metadata
                 for meta_key, file_key in field_mapping.items():
                     if meta_key in metadata:
                         audio[file_key] = str(metadata[meta_key])
 
                 audio.save()
 
-                # Si hay URL de portada, descargar e incrustar (solo para FLAC)
+                # If there's cover URL, download and embed (only for FLAC)
                 if "cover_url" in metadata and file_ext == ".flac":
-                    # Importar el gestor de portadas
+                    # Import album art manager
                     from core.artwork import AlbumArtManager
 
                     art_manager = AlbumArtManager()
@@ -617,7 +616,7 @@ class AudioProcessor:
                 return True
 
             elif file_ext == ".m4a":
-                # Para archivos M4A/AAC
+                # For M4A/AAC files
                 try:
                     from mutagen.mp4 import MP4
                 except ImportError:
@@ -625,7 +624,7 @@ class AudioProcessor:
 
                 audio = MP4(file_path)
 
-                # Mapeo de campos para M4A
+                # Field mapping for M4A
                 field_mapping = {
                     "title": "\xa9nam",
                     "artist": "\xa9ART",
@@ -636,12 +635,12 @@ class AudioProcessor:
                     "composer": "\xa9wrt",
                 }
 
-                # Actualizar metadatos
+                # Update metadata
                 for meta_key, file_key in field_mapping.items():
                     if meta_key in metadata:
                         audio[file_key] = [metadata[meta_key]]
 
-                # Manejar número de pista/disco para M4A
+                # Handle track/disc number for M4A
                 if "tracknumber" in metadata:
                     try:
                         track = int(metadata["tracknumber"])
@@ -666,9 +665,9 @@ class AudioProcessor:
 
                 audio.save()
 
-                # Si hay URL de portada, descargar e incrustar
+                # If there's cover URL, download and embed
                 if "cover_url" in metadata:
-                    # Importar el gestor de portadas
+                    # Import album art manager
                     from core.artwork import AlbumArtManager
 
                     art_manager = AlbumArtManager()
@@ -680,7 +679,7 @@ class AudioProcessor:
                 return True
 
             else:
-                # Para otros formatos, usar manejo genérico
+                # For other formats, use generic handling
                 try:
                     from mutagen import File
                 except ImportError:
@@ -698,7 +697,7 @@ class AudioProcessor:
                             "artists",
                             "acoustid",
                         ]:
-                            continue  # Saltar metadatos que no son para el archivo
+                            continue  # Skip metadata that is not for the file
                         if isinstance(value, list):
                             value = value[0] if value else ""
                         audio[key] = value
@@ -712,12 +711,12 @@ class AudioProcessor:
 
     def rename_files(self):
         """
-        Renombra los archivos de audio basándose en sus metadatos.
-        Si el archivo no tiene los metadatos necesarios (artista o título),
-        no se renombra y se muestra un mensaje.
+        Renames audio files based on their metadata.
+        If the file doesn't have the necessary metadata (artist or title),
+        it is not renamed and a message is shown.
 
         Returns:
-            dict: Cambios realizados (nuevo_nombre: nombre_original)
+            dict: Changes made (new_name: original_name)
         """
 
         files = get_audio_files(directory=self.directory)
@@ -733,14 +732,14 @@ class AudioProcessor:
 
                 audio = File(file_path, easy=True)
 
-                # Verificar si existen los metadatos necesarios
+                # Check if necessary metadata exists
                 if not audio or not audio.tags:
                     continue
 
                 artist = audio.get("artist", [""])[0]
                 title = audio.get("title", [""])[0]
 
-                # Verificar si los metadatos están vacíos o son los valores por defecto
+                # Check if metadata is empty or default values
                 if (
                     not artist
                     or not title
@@ -749,7 +748,7 @@ class AudioProcessor:
                 ):
                     continue
 
-                # Artista - Título.formato (.mp3, .flac, etc..)
+                # Artist - Title.format (.mp3, .flac, etc.)
                 new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
 
                 actual_new_name, changed = self._safe_rename(file, new_name)
@@ -758,7 +757,7 @@ class AudioProcessor:
             except Exception:
                 pass
 
-        # La CLI mostrará el resumen de renombrados
+        # CLI will show renaming summary
 
         return changes
 
@@ -766,7 +765,7 @@ class AudioProcessor:
         files = get_audio_files(self.directory)
         for new_name, old_name in changes.items():
             try:
-                # Verificar si el nuevo nombre existe en el directorio
+                # Check if the new name exists in the directory
                 if new_name in files:
                     self._safe_rename(new_name, old_name)
             except Exception:
@@ -774,14 +773,14 @@ class AudioProcessor:
 
     def _safe_rename(self, old_name, new_name):
         """
-        Renombra un archivo de forma segura, evitando conflictos de nombres.
+        Renames a file safely, avoiding name conflicts.
 
         Args:
-            old_name (str): Nombre original del archivo
-            new_name (str): Nuevo nombre para el archivo
+            old_name (str): Original file name
+            new_name (str): New name for the file
 
         Returns:
-            tuple: (nombre_final, cambio_realizado)
+            tuple: (final_name, change_made)
         """
 
         old_path = os.path.join(self.directory, old_name)
@@ -808,13 +807,13 @@ class AudioProcessor:
 
     def _sanitize_filename(self, filename):
         """
-        Sanitiza el nombre del archivo según el sistema operativo.
+        Sanitizes the filename according to the operating system.
 
         Args:
-            filename (str): Nombre del archivo a sanitizar
+            filename (str): Filename to sanitize
 
         Returns:
-            str: Nombre sanitizado
+            str: Sanitized filename
         """
         if self.os_type == "Windows":
             invalid_chars = r'[<>:"/\\|?*\x00-\x1f]'

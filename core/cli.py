@@ -1,6 +1,6 @@
 """
-Punto de entrada CLI para la aplicación Music Renamer.
-Maneja los argumentos de línea de comandos y ejecuta las operaciones correspondientes.
+CLI entry point for the Music Renamer application.
+Handles command line arguments and executes corresponding operations.
 """
 
 import os
@@ -28,14 +28,14 @@ class Cli:
         use_acoustid = self.args.recognition
 
         start_lyrics = input(
-            "¿Comenzar búsqueda e incrustación de letras? (Y/N): "
+            "Start searching and embedding lyrics? (Y/N): "
         ).lower()
         if start_lyrics == "y":
             lyrics_results = self.processor.process_files(
                 use_recognition=use_acoustid, process_lyrics=True
             )
 
-            # Mostrar estadísticas de procesamiento
+            # Show processing statistics
             if lyrics_results:
                 total = len(lyrics_results)
                 recognized = sum(
@@ -50,111 +50,116 @@ class Cli:
                     if r.get("lyrics_embedded", False)
                 )
 
-                print("\nResumen:")
-                print(f"Total de archivos procesados: {total}")
+                print("\nSummary:")
+                print(f"Total files processed: {total}")
                 if use_acoustid:
-                    print(f"Canciones reconocidas: {recognized}")
-                print(f"Letras encontradas: {lyrics_found}")
-                print(f"Letras incrustadas correctamente: {lyrics_embedded}")
+                    print(f"Songs recognized: {recognized}")
+                print(f"Lyrics found: {lyrics_found}")
+                print(f"Lyrics embedded successfully: {lyrics_embedded}")
 
     def _add_covers(self) -> None:
-        # Importar el procesador de portadas específico
+        # Import the specific cover processor
         try:
             import core.install_covers as install_covers
 
-            print("Ejecutando añadir portadas...")
+            print("Executing add covers...")
             install_covers.main()
             return
         except ImportError:
-            print("Error al importar el módulo de instalación de portadas.")
+            print("Error importing the cover installation module.")
             return
 
     def _init_parser(self) -> None:
         self.parser.add_argument(
             "-d",
             "--directory",
-            help="Directorio donde se encuentran los archivos de audio",
+            help="Directory where audio files are located",
             default=".",
         )
         self.parser.add_argument(
             "-l",
             "--lyrics",
-            help="Buscar e incrustar letras sincronizadas",
+            help="Search and embed synchronized lyrics",
             action="store_true",
         )
         self.parser.add_argument(
             "--recognition",
-            help="Usar reconocimiento de audio con AcoustID",
+            help="Use audio recognition with AcoustID",
             action="store_true",
         )
         self.parser.add_argument(
             "--acoustid_key",
-            help="AcoustID API key (opcional)",
+            help="AcoustID API key (optional)",
             default="8XaBELgH",
         )
         self.parser.add_argument(
             "--only-covers",
-            help="Solo añadir portadas de álbum",
+            help="Add album covers only",
+            action="store_true",
+        )
+        self.parser.add_argument(
+            "--albums",
+            help="Organize files into album folders after processing",
             action="store_true",
         )
 
     def main(self) -> None:
-        """Función principal de la interfaz de línea de comandos."""
+        """Main function of the command line interface."""
 
-        # Verificar dependencias
-        print("Verificando dependencias...\n")
-        if not check_dependencies():
+        # Check dependencies
+        print("Checking dependencies...\n")
+        if not check_dependencies(use_recognition=self.args.recognition):
             return
 
         directory = os.path.abspath(self.args.directory)
-        print(f"Directorio de trabajo: {directory}")
+        print(f"Working directory: {directory}")
 
         if not os.path.isdir(directory):
-            print(f"El directorio especificado no existe: {directory}")
-            input("Presiona Enter para salir...")
+            print(f"The specified directory does not exist: {directory}")
+            input("Press Enter to exit...")
             return
 
         files = get_audio_files(directory)
 
         if not files:
-            print("No se encontraron archivos de audio en este directorio.")
-            input("Presiona Enter para salir...")
+            print("No audio files found in this directory.")
+            input("Press Enter to exit...")
             return
 
-        print(f"Se encontraron {len(files)} archivos de audio.")
+        print(f"Found {len(files)} audio files.")
 
-        # Si solo queremos añadir portadas
+        # If we only want to add covers
         if self.args.only_covers:
-            print("Modo: Solo añadir portadas de álbum")
+            print("Mode: Add album covers only")
             self._add_covers()
 
-        # Verificar si debemos buscar letras sincronizadas
+        # Check if we should search for synchronized lyrics
         if self.args.lyrics:
             print(
-                "Se utilizará la función de búsqueda e incrustación de letras sincronizadas."
+                "The synchronized lyrics search and embedding function will be used."
             )
             self._verify_sync_lyrics()
 
-        # Renombrar archivos
-        start_rename = input("¿Comenzar renombramiento de archivos? (Y/N): ").lower()
+        # Rename files
+        start_rename = input("Start renaming files? (Y/N): ").lower()
         if start_rename != "y":
-            print("Operación de renombramiento cancelada.")
-            input("Presiona Enter para salir...")
+            print("Renaming operation cancelled.")
+            input("Press Enter to exit...")
             return
 
         changes = self.processor.rename_files()
 
         if changes:
             keep_changes = input(
-                "¿Desea mantener los cambios de nombre? (Y/N): "
+                "Do you want to keep the name changes? (Y/N): "
             ).lower()
             if keep_changes != "y":
                 self.processor.undo_rename(changes)
-                print("Los cambios de nombre se han revertido.")
+                print("The name changes have been reverted.")
             else:
-                print("Los cambios de nombre se han mantenido.")
+                print("The name changes have been kept.")
         else:
-            print("No se realizaron cambios de nombre.")
+            print("No name changes were made.")
 
-        print("El proceso ha concluido correctamente.")
-        input("Presiona Enter para salir...")
+        print("The process has completed successfully.")
+        input("Press Enter to exit...")

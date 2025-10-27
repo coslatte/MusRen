@@ -4,10 +4,10 @@ from constants.settings import AUDIO_EXTENSIONS
 
 def get_audio_files(directory):
     """
-    Obtiene todos los archivos de audio en el directorio especificado.
+    Gets all audio files in the specified directory.
 
     Returns:
-        list: Lista de nombres de archivos de audio
+        list: List of audio file names
     """
 
     audio_extensions = AUDIO_EXTENSIONS

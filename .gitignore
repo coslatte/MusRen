@@ -19,37 +19,54 @@ venv/
 env/
 ENV/
 
-# Pytest
+
+# Keep repository clean: caches and virtual environments
+# Virtual environment (recommended local name)
+.venv/
+venv/
+env/
+ENV/
+
+# Pytest cache
 .pytest_cache/
 
-# Coverage
-.coverage
-coverage.xml
-htmlcov/
+# Per-package bytecode caches (keep the generic __pycache__ but also
+# explicitly ignore common package-level caches present in this repo)
+__pycache__/
+constants/__pycache__/
+core/__pycache__/
+utils/__pycache__/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp.cjs
+.pnp.js
+.pnpm-store/
+# Yarn v2+ cache/layout (keep common exceptions if you commit parts of .yarn)
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
 
-# Mypy
-.mypy_cache/
+# Build / output folders often produced by web frameworks
+/dist/
+/build/
+/.next/
+/.nuxt/
+/out/
+/public/build/
+/.vercel/
+/.vite/
+/.parcel-cache/
+.esbuild/
 
-# Editor directories and files
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
+# Environment variables (local overrides)
+.env.local
+.env.*.local
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs and databases
+# Other common webdev artifacts
+logs/
 *.log
-*.sqlite3
-*.db
-
-# Tooling / binaries
-fpcalc.exe
-
-# Optional local agent todo export
-.agent_todos.json
-
-# Misc
-.cache/

@@ -1,5 +1,5 @@
 """
-Módulo para verificar e instalar dependencias del programa.
+Module for checking and installing program dependencies.
 """
 
 import os
@@ -10,13 +10,7 @@ import importlib.util
 import shutil
 
 
-def check_dependencies():
-    """
-    Verifica si las dependencias necesarias están instaladas y ofrece instalarlas.
-
-    Returns:
-        bool: True si todas las dependencias están disponibles o se instalaron correctamente.
-    """
+def check_dependencies(use_recognition=False):
     # Map Python import names to pip package names when they differ
     MODULE_TO_PIP = {
         "mutagen": "mutagen",
@@ -33,48 +27,48 @@ def check_dependencies():
 
     for mod in ("mutagen", "requests", "syncedlyrics", "acoustid"):
         if is_installed(mod):
-            print(f"[OK] {mod} está instalado")
+            print(f"[OK] {mod} is installed")
         else:
             missing_deps.append(MODULE_TO_PIP.get(mod, mod))
 
-    # Si hay dependencias faltantes, ofrecer instalarlas
+    # If there are missing dependencies, offer to install them
     if missing_deps:
-        print("\nFaltan las siguientes dependencias:")
+        print("\nMissing the following dependencies:")
         for dep in missing_deps:
             print(f"  - {dep}")
 
-        install = input("\n¿Desea instalar las dependencias faltantes? (Y/N): ").lower()
+        install = input("\nDo you want to install the missing dependencies? (Y/N): ").lower()
         if install == "y":
-            # Construir comando de instalación
+            # Build installation command
             pip_cmd = [sys.executable, "-m", "pip", "install"]
             pip_cmd.extend(missing_deps)
 
-            print(f"\nInstalando: {' '.join(missing_deps)}")
+            print(f"\nInstalling: {' '.join(missing_deps)}")
             try:
                 subprocess.check_call(pip_cmd)
-                print("\n[OK] Dependencias instaladas correctamente")
+                print("\n[OK] Dependencies installed successfully")
 
-                # Si se instaló pyacoustid, verificar fpcalc
+                # If pyacoustid was installed, check fpcalc
                 if "pyacoustid" in missing_deps or "acoustid" in missing_deps:
                     installed, message = check_acoustid_installation()
                     if not installed:
-                        print(f"\n[AVISO] {message}")
+                        print(f"\n[WARNING] {message}")
                         print(
-                            "\nAsegúrese de instalar Chromaprint (fpcalc) para usar la funcionalidad de reconocimiento de canciones."
+                            "\nMake sure to install Chromaprint (fpcalc) to use song recognition functionality."
                         )
 
                 return True
             except Exception as e:
-                print(f"\n[ERROR] Error al instalar dependencias: {str(e)}")
+                print(f"\n[ERROR] Error installing dependencies: {str(e)}")
                 return False
         else:
             print(
-                "\n[AVISO] El programa puede no funcionar correctamente sin estas dependencias."
+                "\n[WARNING] The program may not work correctly without these dependencies."
             )
             return False
 
-    # Si llegamos aquí, verificar la instalación de AcoustID (si está presente)
-    if check_acoustid_needed():
+    # If we reach here, check AcoustID installation (if present and recognition is used)
+    if use_recognition and check_acoustid_needed():
         installed, message = check_acoustid_installation()
         print(f"\nChromaprint/AcoustID: {message}")
 
@@ -83,23 +77,23 @@ def check_dependencies():
 
 def check_acoustid_needed():
     """
-    Verifica si es necesario comprobar la instalación de AcoustID.
+    Checks if it is necessary to verify AcoustID installation.
 
     Returns:
-        bool: True si debemos verificar AcoustID.
+        bool: True if we should verify AcoustID.
     """
     return importlib.util.find_spec("acoustid") is not None
 
 
 def check_acoustid_installation():
     """
-    Verifica si Chromaprint (fpcalc) está correctamente instalado.
+    Checks if Chromaprint (fpcalc) is correctly installed.
 
     Returns:
-        tuple: (instalado, mensaje)
+        tuple: (installed, message)
     """
     try:
-        # Primero, comprobar en PATH
+        # First, check in PATH
         fp_in_path = shutil.which("fpcalc") or shutil.which("fpcalc.exe")
         if fp_in_path:
             try:
@@ -109,12 +103,12 @@ def check_acoustid_installation():
                 version = result.stdout.strip() or result.stderr.strip()
                 return (
                     True,
-                    f"Chromaprint está instalado en: {fp_in_path} (versión: {version})",
+                    f"Chromaprint is installed at: {fp_in_path} (version: {version})",
                 )
             except Exception:
-                return True, f"Chromaprint está presente en PATH: {fp_in_path}"
+                return True, f"Chromaprint is present in PATH: {fp_in_path}"
 
-        # Buscar fpcalc en ubicaciones del proyecto
+        # Search for fpcalc in project locations
         script_dir = os.path.abspath(os.path.dirname(__file__))
         project_root = os.path.abspath(os.path.join(script_dir, ".."))
         os_type = platform.system()
@@ -137,19 +131,19 @@ def check_acoustid_installation():
                         version = stdout.decode("utf-8", errors="ignore").strip()
                         return (
                             True,
-                            f"Chromaprint está instalado localmente. Versión: {version}",
+                            f"Chromaprint is installed locally. Version: {version}",
                         )
                     else:
                         return (
                             False,
-                            f"Chromaprint está presente pero no puede ejecutarse: {stderr.decode('utf-8', errors='ignore')}",
+                            f"Chromaprint is present but cannot be executed: {stderr.decode('utf-8', errors='ignore')}",
                         )
                 except Exception as e:
-                    return False, f"Error al verificar fpcalc local: {str(e)}"
+                    return False, f"Error verifying local fpcalc: {str(e)}"
 
         return (
             False,
-            "Chromaprint (fpcalc) no está instalado. Coloque fpcalc.exe en el directorio raíz del proyecto o en la carpeta utils/, o instale Chromaprint en el sistema.",
+            "Chromaprint (fpcalc) is not installed. Place fpcalc.exe in the project root directory or in the utils/ folder, or install Chromaprint on the system.",
         )
     except Exception as e:
-        return False, f"Error verificando Chromaprint: {str(e)}"
+        return False, f"Error verifying Chromaprint: {str(e)}"

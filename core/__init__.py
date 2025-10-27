@@ -1,3 +1,3 @@
 """
-Módulos centrales para el procesamiento de archivos de audio.
+Core modules for audio file processing.
 """

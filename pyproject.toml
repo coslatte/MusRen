@@ -1,7 +1,7 @@
 [project]
 name = "music-renamer"
 version = "1.0.0"
-description = "Herramienta para renombrar y gestionar metadatos de archivos de música"
+description = "Tool for renaming and managing music file metadata"
 authors = [
     { name = "cosLatte", email = "gabrielpazruiz02@gmail.com" }
 ]

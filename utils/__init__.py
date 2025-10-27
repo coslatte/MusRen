@@ -1,3 +1,3 @@
 """
-Módulos de utilidades y herramientas para Music Renamer.
+Utility modules and tools for Music Renamer.
 """
