@@ -9,7 +9,6 @@ from rich.panel import Panel
 from rich.progress import (
     BarColumn,
     Progress,
-    SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
     TimeRemainingColumn,
@@ -18,6 +17,7 @@ from rich.table import Table
 
 from constants.settings import AUDIO_EXTENSIONS
 from utils.tools import (
+    format_progress_desc,
     get_audio_files,
     get_pause_manager,
     suppress_noisy_loggers,
@@ -88,7 +88,6 @@ def albums_run(
 
     with Progress(
         TextColumn("  [bold cyan]{task.description}"),
-        SpinnerColumn(style="bold cyan"),
         BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
@@ -115,14 +114,11 @@ def albums_run(
 
             album_groups[album].append(file_path)
 
-            filename = file_path.name
-            if len(filename) > 40:
-                filename = filename[:37] + "..."
-
+            desc = format_progress_desc(f"Analyzing: {file_path.name}")
             progress.update(
                 task_id,
                 advance=1,
-                description=f"Analyzing: [bold white]{filename}[/bold white]",
+                description=f"[bold white]{desc}[/bold white]",
             )
 
     singles_dir = directory / "Singles"
@@ -134,7 +130,6 @@ def albums_run(
 
     with Progress(
         TextColumn("  [bold cyan]{task.description}"),
-        SpinnerColumn(style="bold cyan"),
         BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
@@ -159,10 +154,11 @@ def albums_run(
                         singles_count += 1
                     except Exception as e:
                         errors.append(f"{track.name}: {e}")
+                    desc = format_progress_desc(f"Moving: {track.name}")
                     progress.update(
                         task_id,
                         advance=1,
-                        description=f"Moving: [bold white]{track.name}[/bold white]",
+                        description=f"[bold white]{desc}[/bold white]",
                     )
             else:
                 safe_album = "".join(
@@ -181,10 +177,11 @@ def albums_run(
                         albums_moved += 1
                     except Exception as e:
                         errors.append(f"{track.name}: {e}")
+                    desc = format_progress_desc(f"Moving: {track.name}")
                     progress.update(
                         task_id,
                         advance=1,
-                        description=f"Moving: [bold white]{track.name}[/bold white]",
+                        description=f"[bold white]{desc}[/bold white]",
                     )
 
     pause.stop()
@@ -283,9 +280,11 @@ def albums_revert(
     moved = 0
     errors = []
 
+    pause = get_pause_manager()
+    pause.start()
+
     with Progress(
         TextColumn("  [bold yellow]{task.description}"),
-        SpinnerColumn(style="bold yellow"),
         BarColumn(bar_width=30, complete_style="yellow", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
@@ -295,6 +294,7 @@ def albums_revert(
         task_id = progress.add_task("Reverting...", total=len(files_in_subdirs))
 
         for file_path in files_in_subdirs:
+            pause.wait_if_paused(console)
             dest = audio_dir / file_path.name
             try:
                 if dest.exists():
@@ -309,21 +309,27 @@ def albums_revert(
             except Exception as e:
                 errors.append(f"{file_path.name}: {e}")
 
+            desc = format_progress_desc(f"Moving: {file_path.name}")
             progress.update(
                 task_id,
                 advance=1,
-                description=f"Moving: [bold white]{file_path.name}[/bold white]",
+                description=f"[bold white]{desc}[/bold white]",
             )
 
+    pause.stop()
+
     # Remove empty subdirectories
-    for root, dirs, _ in os.walk(audio_dir, topdown=False):
-        for d in dirs:
-            dir_path = Path(root) / d
-            try:
-                if dir_path != audio_dir and not any(dir_path.iterdir()):
-                    dir_path.rmdir()
-            except Exception:
-                pass
+    try:
+        for root, dirs, _ in os.walk(audio_dir, topdown=False):
+            for d in dirs:
+                dir_path = Path(root) / d
+                try:
+                    if dir_path != audio_dir and not any(dir_path.iterdir()):
+                        dir_path.rmdir()
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
     result = Table(title="Revert Summary", box="simple")
     result.add_column("Metric", style="bold cyan")

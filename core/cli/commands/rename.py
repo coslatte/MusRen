@@ -7,7 +7,6 @@ from rich.panel import Panel
 from rich.progress import (
     BarColumn,
     Progress,
-    SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
     TimeRemainingColumn,
@@ -18,6 +17,7 @@ from core.audio_processor import AudioProcessor
 from core.cli.config import get_config_manager
 from utils.dependencies import check_dependencies
 from utils.tools import (
+    format_progress_desc,
     get_audio_files,
     get_pause_manager,
     suppress_noisy_loggers,
@@ -87,6 +87,15 @@ def rename_run(
     table.add_row("Files found", str(len(files)))
     console.print(table)
 
+    if not yes:
+        console.print("\n[bold cyan]Select rename format:[/bold cyan]")
+        console.print("  [bold]1[/bold] - artist - title")
+        console.print("  [bold]2[/bold] - title")
+        console.print("  [bold]3[/bold] - track_number - artist - title (if album)")
+        rename_format = typer.prompt("Choose format", default="1", type=str)
+    else:
+        rename_format = "1"
+
     processor = AudioProcessor(
         directory=audio_dir,
         acoustid_api_key=api_key,
@@ -104,8 +113,7 @@ def rename_run(
     pause.start()
 
     with Progress(
-        TextColumn("  [bold cyan]{task.description:[bold cyan]}"),
-        SpinnerColumn(style="bold cyan"),
+        TextColumn("  [bold cyan]{task.description}"),
         BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
@@ -118,8 +126,6 @@ def rename_run(
             nonlocal renamed_count, no_change_count
             pause.wait_if_paused(console)
             filename = Path(file_path).name
-            if len(filename) > 40:
-                filename = filename[:37] + "..."
 
             status = ""
             if result.get("renamed"):
@@ -136,13 +142,17 @@ def rename_run(
                 no_change_count += 1
                 status = "[dim]No changes[/dim]"
 
+            desc = format_progress_desc(f"Renaming: {filename} - {status}")
             progress.update(
                 task_id,
                 advance=1,
-                description=f"Renaming: [bold white]{filename}[/bold white] - {status}",
+                description=f"[bold white]{desc}[/bold white]",
             )
 
-        changes = processor.rename_files(progress_callback=rename_callback)
+        changes = processor.rename_files(
+            progress_callback=rename_callback,
+            rename_format=rename_format,
+        )
 
     pause.stop()
     elapsed = datetime.now() - start_time
@@ -191,7 +201,6 @@ def rename_run(
         if not keep_changes:
             with Progress(
                 TextColumn("  [bold yellow]{task.description}"),
-                SpinnerColumn(style="bold yellow"),
                 BarColumn(
                     bar_width=30, complete_style="yellow", finished_style="green"
                 ),
@@ -204,12 +213,11 @@ def rename_run(
 
                 def undo_callback(file_path, result):
                     filename = Path(file_path).name
-                    if len(filename) > 40:
-                        filename = filename[:37] + "..."
+                    desc = format_progress_desc(f"Reverting: {filename}")
                     progress.update(
                         task_id,
                         advance=1,
-                        description=f"Reverting: [bold white]{filename}[/bold white]",
+                        description=f"[bold white]{desc}[/bold white]",
                     )
 
                 processor.undo_rename(changes, progress_callback=undo_callback)

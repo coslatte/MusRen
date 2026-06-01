@@ -7,7 +7,6 @@ from rich.panel import Panel
 from rich.progress import (
     BarColumn,
     Progress,
-    SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
     TimeRemainingColumn,
@@ -18,6 +17,7 @@ from core.audio_processor import AudioProcessor
 from core.cli.config import get_config_manager
 from utils.dependencies import check_dependencies
 from utils.tools import (
+    format_progress_desc,
     get_audio_files,
     get_pause_manager,
     suppress_noisy_loggers,
@@ -115,7 +115,6 @@ def recognize_run(
 
     with Progress(
         TextColumn("  [bold cyan]{task.description}"),
-        SpinnerColumn(style="bold cyan"),
         BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
@@ -127,8 +126,6 @@ def recognize_run(
         def progress_callback(file_path: str, result: Dict) -> None:
             pause.wait_if_paused(console)
             filename = Path(file_path).name
-            if len(filename) > 40:
-                filename = filename[:37] + "..."
 
             status = ""
             if result.get("error"):
@@ -140,10 +137,11 @@ def recognize_run(
             else:
                 status = "[dim]No match[/dim]"
 
+            desc = format_progress_desc(f"Processing: {filename} - {status}")
             progress.update(
                 task_id,
                 advance=1,
-                description=f"Processing: [bold white]{filename}[/bold white] - {status}",
+                description=f"[bold white]{desc}[/bold white]",
             )
 
         results = processor.process_files(

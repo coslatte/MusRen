@@ -6,7 +6,6 @@ from rich.panel import Panel
 from rich.progress import (
     BarColumn,
     Progress,
-    SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
     TimeRemainingColumn,
@@ -15,6 +14,7 @@ from rich.table import Table
 
 from utils.dependencies import check_dependencies
 from utils.tools import (
+    format_progress_desc,
     get_audio_files,
     get_pause_manager,
     suppress_noisy_loggers,
@@ -99,7 +99,6 @@ def covers_run(
 
     with Progress(
         TextColumn("  [bold cyan]{task.description}"),
-        SpinnerColumn(style="bold cyan"),
         BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
@@ -111,8 +110,6 @@ def covers_run(
         def progress_callback(file_path: str, result: dict) -> None:
             pause.wait_if_paused(console)
             filename = Path(file_path).name
-            if len(filename) > 40:
-                filename = filename[:37] + "..."
 
             status = ""
             if not result.get("status"):
@@ -122,10 +119,11 @@ def covers_run(
             else:
                 status = "[green]Added[/green]"
 
+            desc = format_progress_desc(f"Processing: {filename} - {status}")
             progress.update(
                 task_id,
                 advance=1,
-                description=f"Processing: [bold white]{filename}[/bold white] - {status}",
+                description=f"[bold white]{desc}[/bold white]",
             )
 
         install_covers.run(audio_dir, progress_callback=progress_callback)

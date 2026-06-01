@@ -12,7 +12,6 @@ from rich.panel import Panel
 from rich.progress import (
     BarColumn,
     Progress,
-    SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
     TimeRemainingColumn,
@@ -23,7 +22,7 @@ from rich.traceback import install as rich_traceback_install
 from constants.info import PARSER_DESCRIPTION
 from core.audio_processor import AudioProcessor
 from utils.dependencies import check_dependencies
-from utils.tools import get_audio_files
+from utils.tools import format_progress_desc, get_audio_files
 
 load_dotenv()
 rich_traceback_install(show_locals=False)
@@ -292,7 +291,6 @@ def main(
     files_to_rename = get_audio_files(directory, recursive=recursive)
 
     with Progress(
-        SpinnerColumn(style="bold cyan"),
         TextColumn("[bold cyan]{task.description}"),
         BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
@@ -304,8 +302,6 @@ def main(
 
         def rename_callback(file_path, result):
             filename = os.path.basename(file_path)
-            if len(filename) > 40:
-                filename = filename[:37] + "..."
 
             status = ""
             if result.get("renamed"):
@@ -317,10 +313,11 @@ def main(
             else:
                 status = "[dim]No changes[/dim]"
 
+            desc = format_progress_desc(f"Renaming: {filename} - {status}")
             progress.update(
                 task_id,
                 advance=1,
-                description=f"Renaming: [bold white]{filename}[/bold white] - {status}",
+                description=f"[bold white]{desc}[/bold white]",
             )
 
         changes = processor.rename_files(progress_callback=rename_callback)
@@ -342,7 +339,6 @@ def main(
 
         if not keep_changes:
             with Progress(
-                SpinnerColumn(style="bold yellow"),
                 TextColumn("[bold yellow]{task.description}"),
                 BarColumn(
                     bar_width=None, complete_style="yellow", finished_style="green"
@@ -356,13 +352,11 @@ def main(
 
                 def undo_callback(file_path, result):
                     filename = os.path.basename(file_path)
-                    if len(filename) > 40:
-                        filename = filename[:37] + "..."
-
+                    desc = format_progress_desc(f"Reverting: {filename}")
                     progress.update(
                         task_id,
                         advance=1,
-                        description=f"Reverting: [bold white]{filename}[/bold white]",
+                        description=f"[bold white]{desc}[/bold white]",
                     )
 
                 processor.undo_rename(changes, progress_callback=undo_callback)
@@ -439,7 +433,6 @@ def process_lyrics_and_stats(
     lyrics_results = {}
 
     with Progress(
-        SpinnerColumn(style="bold cyan"),
         TextColumn("[bold cyan]{task.description}"),
         BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
@@ -451,9 +444,6 @@ def process_lyrics_and_stats(
 
         def progress_callback(file_path, result):
             filename = os.path.basename(file_path)
-            # Truncate name if too long
-            if len(filename) > 40:
-                filename = filename[:37] + "..."
 
             status = ""
             if result.get("error"):
@@ -469,10 +459,11 @@ def process_lyrics_and_stats(
             else:
                 status = "[dim]No changes[/dim]"
 
+            desc = format_progress_desc(f"Processing: {filename} - {status}")
             progress.update(
                 task_id,
                 advance=1,
-                description=f"Processing: [bold white]{filename}[/bold white] - {status}",
+                description=f"[bold white]{desc}[/bold white]",
             )
 
         lyrics_results = processor.process_files(
@@ -583,7 +574,6 @@ def add_covers(directory: Path) -> None:
             return
 
         with Progress(
-            SpinnerColumn(style="bold cyan"),
             TextColumn("[bold cyan]{task.description}"),
             BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
             TaskProgressColumn(),
@@ -595,8 +585,6 @@ def add_covers(directory: Path) -> None:
 
             def progress_callback(file_path, result):
                 filename = os.path.basename(file_path)
-                if len(filename) > 40:
-                    filename = filename[:37] + "..."
 
                 status = ""
                 if not result.get("status"):
@@ -606,10 +594,11 @@ def add_covers(directory: Path) -> None:
                 else:
                     status = "[green]Added[/green]"
 
+                desc = format_progress_desc(f"Processing: {filename} - {status}")
                 progress.update(
                     task_id,
                     advance=1,
-                    description=f"Processing: [bold white]{filename}[/bold white] - {status}",
+                    description=f"[bold white]{desc}[/bold white]",
                 )
 
             install_covers.run(str(directory), progress_callback=progress_callback)

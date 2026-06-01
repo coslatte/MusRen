@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import signal
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -48,6 +50,7 @@ class InteractiveShell:
         self.history: list[str] = []
         self.current_dir = Path.cwd()
         self.screens = self._create_screens()
+        self._last_sigint_time = 0.0
 
         try:
             import readchar
@@ -73,7 +76,7 @@ class InteractiveShell:
             except EOFError:
                 return ""
             except KeyboardInterrupt:
-                return ""
+                raise
 
             if key in ("\n", "\r"):
                 sys.stdout.write("\n")

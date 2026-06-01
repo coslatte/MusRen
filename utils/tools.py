@@ -153,3 +153,15 @@ def suppress_noisy_loggers():
         logger.setLevel(logging.CRITICAL)
         logger.handlers.clear()
         logger.propagate = False
+
+
+# ── Progress display helpers ────────────────────────────────────────────────
+
+PROGRESS_DESC_WIDTH = 60
+
+
+def format_progress_desc(text: str, width: int = PROGRESS_DESC_WIDTH) -> str:
+    """Pad or truncate text to a fixed width for stable progress bar layout."""
+    if len(text) > width:
+        return text[: width - 3] + "..."
+    return text.ljust(width)
