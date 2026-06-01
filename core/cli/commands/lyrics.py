@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import typer
+from rich.box import SIMPLE, SIMPLE_HEAVY
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -183,7 +184,7 @@ def lyrics_run(
         )
         return
 
-    table = Table(title="Configuration", box="simple_heavy")
+    table = Table(title="Configuration", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
     table.add_column("Value", style="white")
     table.add_row("Directory", str(directory))
@@ -206,7 +207,7 @@ def lyrics_run(
         fetch_covers=covers,
     )
 
-    stats_table = Table(title="Processing Summary", box="simple")
+    stats_table = Table(title="Processing Summary", box=SIMPLE)
     stats_table.add_column("Metric", style="bold cyan")
     stats_table.add_column("Value", style="white")
     stats_table.add_row("Total files", str(stats.get("total", 0)))
@@ -218,7 +219,7 @@ def lyrics_run(
 
     results = stats.get("results", {}) or {}
     if results:
-        detail = Table(title="File Detail", box="simple_heavy")
+        detail = Table(title="File Detail", box=SIMPLE_HEAVY)
         detail.add_column("File", style="bold")
         if recognition:
             detail.add_column("Rec.", justify="center")

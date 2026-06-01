@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import typer
+from rich.box import SIMPLE, SIMPLE_HEAVY
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -79,7 +80,7 @@ def rename_run(
         )
         return
 
-    table = Table(title="Configuration", box="simple_heavy")
+    table = Table(title="Configuration", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
     table.add_column("Value", style="white")
     table.add_row("Directory", str(directory))
@@ -162,7 +163,7 @@ def rename_run(
         else f"{elapsed.seconds}s"
     )
 
-    summary = Table(title="Rename Summary", box="simple")
+    summary = Table(title="Rename Summary", box=SIMPLE)
     summary.add_column("Metric", style="bold cyan")
     summary.add_column("Value", style="white")
     summary.add_row("Total files", str(len(files)))
@@ -174,7 +175,7 @@ def rename_run(
     console.print(summary)
 
     if skipped:
-        skip_table = Table(title="Skipped Files", box="simple")
+        skip_table = Table(title="Skipped Files", box=SIMPLE)
         skip_table.add_column("File", style="yellow")
         skip_table.add_column("Reason", style="dim")
         for fname, reason in skipped:
@@ -182,7 +183,7 @@ def rename_run(
         console.print(skip_table)
 
     if errors:
-        err_table = Table(title="Error Details", box="simple")
+        err_table = Table(title="Error Details", box=SIMPLE)
         err_table.add_column("File", style="bold red")
         err_table.add_column("Cause", style="red")
         for fname, cause in errors:
@@ -190,7 +191,7 @@ def rename_run(
         console.print(err_table)
 
     if changes:
-        changes_table = Table(title="Name changes", box="simple_heavy")
+        changes_table = Table(title="Name changes", box=SIMPLE_HEAVY)
         changes_table.add_column("Before", style="yellow")
         changes_table.add_column("After", style="green")
         for new_path, old_path in changes.items():

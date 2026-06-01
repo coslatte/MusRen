@@ -1,4 +1,5 @@
 import typer
+from rich.box import SIMPLE_HEAVY
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -57,7 +58,7 @@ def config_list() -> None:
     config = get_config_manager()
     keys = config.list_keys()
 
-    table = Table(title="API Keys", box="simple_heavy")
+    table = Table(title="API Keys", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
     table.add_column("Value", style="white")
     table.add_column("Description", style="dim")

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict
 
 import typer
+from rich.box import SIMPLE, SIMPLE_HEAVY
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -93,7 +94,7 @@ def recognize_run(
         )
         return
 
-    table = Table(title="Configuration", box="simple_heavy")
+    table = Table(title="Configuration", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
     table.add_column("Value", style="white")
     table.add_row("Directory", str(directory))
@@ -156,7 +157,7 @@ def recognize_run(
     recognized = sum(1 for _, r in results.items() if r.get("recognition", False))
     updated = sum(1 for _, r in results.items() if r.get("metadata_updated", False))
 
-    stats_table = Table(title="Recognition Summary", box="simple")
+    stats_table = Table(title="Recognition Summary", box=SIMPLE)
     stats_table.add_column("Metric", style="bold cyan")
     stats_table.add_column("Value", style="white")
     stats_table.add_row("Total files", str(len(results)))
@@ -165,7 +166,7 @@ def recognize_run(
     console.print(stats_table)
 
     if results:
-        detail = Table(title="File Detail", box="simple_heavy")
+        detail = Table(title="File Detail", box=SIMPLE_HEAVY)
         detail.add_column("File", style="bold")
         detail.add_column("Status", justify="center")
         detail.add_column("Artist - Title", overflow="fold", style="white")

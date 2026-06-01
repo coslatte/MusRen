@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import signal
 import sys
 import time
 from dataclasses import dataclass
@@ -472,7 +471,7 @@ class InteractiveShell:
         if normalized_args is None:
             return
 
-        self._run_typer_command(albums_app, normalized_args, "albums")
+        self._run_typer_command(albums_app, ["run"] + normalized_args, "albums")
 
     def _run_config(self, args: list) -> None:
         from rich.panel import Panel
@@ -612,7 +611,12 @@ class InteractiveShell:
 
                 console.print()
             except KeyboardInterrupt:
-                console.print("\n[dim]Use /exit to quit[/dim]")
+                now = time.time()
+                if now - self._last_sigint_time < 2.0:
+                    console.print("[yellow]Goodbye![/yellow]")
+                    break
+                self._last_sigint_time = now
+                console.print("\n[dim]Press Ctrl+C again to exit[/dim]")
             except EOFError:
                 break
             except Exception as error:

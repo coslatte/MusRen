@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import typer
+from rich.box import SIMPLE_HEAVY
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -85,7 +86,7 @@ def covers_run(
         )
         return
 
-    table = Table(title="Configuration", box="simple_heavy")
+    table = Table(title="Configuration", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
     table.add_column("Value", style="white")
     table.add_row("Directory", str(directory))

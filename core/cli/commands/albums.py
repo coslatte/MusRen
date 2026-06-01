@@ -4,6 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import typer
+from rich.box import SIMPLE, SIMPLE_HEAVY
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -72,7 +73,7 @@ def albums_run(
         )
         return
 
-    table = Table(title="Configuration", box="simple_heavy")
+    table = Table(title="Configuration", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
     table.add_column("Value", style="white")
     table.add_row("Directory", str(directory))
@@ -186,7 +187,7 @@ def albums_run(
 
     pause.stop()
 
-    stats_table = Table(title="Organization Summary", box="simple")
+    stats_table = Table(title="Organization Summary", box=SIMPLE)
     stats_table.add_column("Metric", style="bold cyan")
     stats_table.add_column("Value", style="white")
     stats_table.add_row(
@@ -207,7 +208,7 @@ def albums_run(
     console.print(stats_table)
 
     if errors:
-        error_table = Table(title="Errors", box="simple")
+        error_table = Table(title="Errors", box=SIMPLE)
         error_table.add_column("File", style="bold red")
         error_table.add_column("Error", style="red")
         for error in errors:
@@ -331,7 +332,7 @@ def albums_revert(
     except Exception:
         pass
 
-    result = Table(title="Revert Summary", box="simple")
+    result = Table(title="Revert Summary", box=SIMPLE)
     result.add_column("Metric", style="bold cyan")
     result.add_column("Value", style="white")
     result.add_row("Files restored", str(moved))
@@ -339,7 +340,7 @@ def albums_revert(
     console.print(result)
 
     if errors:
-        err_table = Table(title="Errors", box="simple")
+        err_table = Table(title="Errors", box=SIMPLE)
         err_table.add_column("File", style="bold red")
         err_table.add_column("Error", style="red")
         for error in errors:
