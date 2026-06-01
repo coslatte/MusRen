@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import threading
 import time
 
@@ -161,7 +162,9 @@ PROGRESS_DESC_WIDTH = 60
 
 
 def format_progress_desc(text: str, width: int = PROGRESS_DESC_WIDTH) -> str:
-    """Pad or truncate text to a fixed width for stable progress bar layout."""
-    if len(text) > width:
-        return text[: width - 3] + "..."
-    return text.ljust(width)
+    """Strip Rich markup, then pad/truncate to fixed width for stable layout."""
+    plain = re.sub(r"\[/?\w+(?:=\w+)?\]", "", text)
+    if len(plain) > width:
+        return plain[: width - 3] + "..."
+    padding = width - len(plain)
+    return text + " " * padding if padding > 0 else text
