@@ -121,7 +121,18 @@ def rename_run(
         console=console,
         expand=True,
     ) as progress:
-        task_id = progress.add_task("Renaming...", total=len(files))
+        scan_task = progress.add_task("Scanning metadata...", total=len(files))
+
+        def scan_callback(file_path):
+            filename = Path(file_path).name
+            desc = format_progress_desc(f"Scanning: {filename}")
+            progress.update(
+                scan_task,
+                advance=1,
+                description=f"[bold white]{desc}[/bold white]",
+            )
+
+        rename_task = progress.add_task("Renaming...", total=len(files))
 
         def rename_callback(file_path, result):
             nonlocal renamed_count, no_change_count
@@ -145,7 +156,7 @@ def rename_run(
 
             desc = format_progress_desc(f"Renaming: {filename} - {status}")
             progress.update(
-                task_id,
+                rename_task,
                 advance=1,
                 description=f"[bold white]{desc}[/bold white]",
             )
@@ -153,7 +164,10 @@ def rename_run(
         changes = processor.rename_files(
             progress_callback=rename_callback,
             rename_format=rename_format,
+            scan_callback=scan_callback,
         )
+
+        progress.remove_task(scan_task)
 
     pause.stop()
     elapsed = datetime.now() - start_time

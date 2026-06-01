@@ -894,7 +894,12 @@ class AudioProcessor:
         except Exception:
             return False
 
-    def rename_files(self, progress_callback=None, rename_format="1"):
+    def rename_files(
+        self,
+        progress_callback=None,
+        rename_format="1",
+        scan_callback=None,
+    ):
         """
         Renames audio files based on their metadata.
         If the file doesn't have the necessary metadata (artist or title),
@@ -909,6 +914,7 @@ class AudioProcessor:
                 "1" = artist - title
                 "2" = title
                 "3" = track_number - artist - title (if album, otherwise artist - title)
+            scan_callback (callable): Optional callback for scan phase progress
 
         Returns:
             dict: Changes made (new_name: original_name)
@@ -932,6 +938,8 @@ class AudioProcessor:
         file_metadata = {}
 
         for file in files:
+            if scan_callback:
+                scan_callback(file)
             file_path = file
             try:
                 audio = File(file_path, easy=True)
