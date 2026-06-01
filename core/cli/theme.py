@@ -1,11 +1,8 @@
-from typing import Dict
-
 from rich.style import Style
-from rich.text import Text
 
 PALETTE = {
     "primary": "cyan",
-    "secondary": "magenta", 
+    "secondary": "magenta",
     "success": "green",
     "warning": "yellow",
     "error": "red",

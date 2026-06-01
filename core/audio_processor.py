@@ -4,7 +4,11 @@ import platform
 import concurrent.futures
 import subprocess
 
-from utils.tools import get_audio_files
+from utils.tools import (
+    check_internet_connection,
+    get_audio_files,
+    suppress_noisy_loggers,
+)
 
 try:
     from core.shazam_processor import ShazamProcessor
@@ -288,6 +292,12 @@ class AudioProcessor:
             dict: Recognized song information
         """
 
+        if not check_internet_connection():
+            return {
+                "status": False,
+                "message": "No internet connection. Skipping recognition.",
+            }
+
         try:
             # Song recognition (status messages in CLI)
 
@@ -379,7 +389,7 @@ class AudioProcessor:
                     if error_code == 4 or "invalid" in error_message.lower():
                         return {
                             "status": False,
-                            "message": f"Invalid AcoustID API key. Please get a valid API key at https://acoustid.org/login and use it with the -k option.",
+                            "message": "Invalid AcoustID API key. Please get a valid API key at https://acoustid.org/login and use it with the -k option.",
                         }
                     return {
                         "status": False,
@@ -559,8 +569,14 @@ class AudioProcessor:
         Returns:
             dict: Synchronized lyrics or error message
         """
+        if not check_internet_connection():
+            return {
+                "status": False,
+                "message": "No internet connection. Skipping lyrics search.",
+            }
+
         try:
-            # Lyrics search (status messages in CLI)
+            suppress_noisy_loggers()
             import syncedlyrics
 
             search_term = f"{artist} {title}"
@@ -884,6 +900,9 @@ class AudioProcessor:
         If the file doesn't have the necessary metadata (artist or title),
         it is not renamed and a message is shown.
 
+        For files that belong to an album (more than 2 tracks with same album),
+        the track number is prepended: "NN - Artist - Title.ext"
+
         Args:
             progress_callback (callable): Function to call upon completing each file
 
@@ -894,40 +913,60 @@ class AudioProcessor:
         files = get_audio_files(directory=self.directory, recursive=self.recursive)
         changes = {}
 
+        try:
+            from mutagen import File  # type: ignore[attr-defined]
+        except ImportError:
+            for file in files:
+                if progress_callback:
+                    progress_callback(
+                        file, {"status": False, "error": "Mutagen missing"}
+                    )
+            return changes
+
+        # First pass: collect album info and track numbers
+        album_counts = {}
+        file_metadata = {}
+
         for file in files:
+            file_path = file
             try:
-                # file is already an absolute path because get_audio_files returns absolute paths
-                file_path = file
-                try:
-                    from mutagen import File  # type: ignore[attr-defined]
-                except ImportError:
-                    if progress_callback:
-                        progress_callback(
-                            file, {"status": False, "error": "Mutagen missing"}
-                        )
-                    continue
-
                 audio = File(file_path, easy=True)
-
-                # Check if necessary metadata exists
                 if not audio or not audio.tags:
-                    if progress_callback:
-                        progress_callback(
-                            file,
-                            {"status": False, "skipped": True, "reason": "No tags"},
-                        )
+                    file_metadata[file] = None
                     continue
 
                 artist = audio.get("artist", [""])[0]
                 title = audio.get("title", [""])[0]
+                album = audio.get("album", [""])[0]
+                tracknumber = audio.get("tracknumber", [""])[0]
 
-                # Check if metadata is empty or default values
                 if (
                     not artist
                     or not title
                     or artist == "Unknown Artist"
                     or title == "Unknown Title"
                 ):
+                    file_metadata[file] = None
+                    continue
+
+                album_label = (
+                    album.strip() if album and album.strip() else "__no_album__"
+                )
+                album_counts[album_label] = album_counts.get(album_label, 0) + 1
+                file_metadata[file] = {
+                    "artist": artist,
+                    "title": title,
+                    "album": album_label,
+                    "tracknumber": tracknumber,
+                }
+            except Exception:
+                file_metadata[file] = None
+
+        # Second pass: rename
+        for file in files:
+            try:
+                meta = file_metadata.get(file)
+                if meta is None:
                     if progress_callback:
                         progress_callback(
                             file,
@@ -939,11 +978,29 @@ class AudioProcessor:
                         )
                     continue
 
-                # Artist - Title.format (.mp3, .flac, etc.)
-                new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
+                artist = meta["artist"]
+                title = meta["title"]
+                album = meta["album"]
+                tracknumber = meta["tracknumber"]
+                is_album = album != "__no_album__" and album_counts.get(album, 0) > 2
 
-                actual_new_path, changed = self._safe_rename(file, new_name)
-                if changed:
+                if is_album and tracknumber:
+                    try:
+                        track_num = int(tracknumber.split("/")[0].split(".")[0])
+                        new_name = f"{track_num:02d} - {artist} - {title}{os.path.splitext(file)[1]}"
+                    except (ValueError, IndexError):
+                        new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
+                else:
+                    new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
+
+                actual_new_path, changed, error = self._safe_rename(file, new_name)
+                if error:
+                    if progress_callback:
+                        progress_callback(
+                            file,
+                            {"status": False, "error": error},
+                        )
+                elif changed:
                     changes[actual_new_path] = file
                     if progress_callback:
                         progress_callback(
@@ -967,8 +1024,6 @@ class AudioProcessor:
             except Exception as e:
                 if progress_callback:
                     progress_callback(file, {"status": False, "error": str(e)})
-
-        # The CLI will show the rename summary
 
         return changes
 
@@ -1012,7 +1067,7 @@ class AudioProcessor:
             new_name (str): New filename
 
         Returns:
-            tuple: (final_name, change_made)
+            tuple: (final_name, change_made, error)
         """
 
         if os.path.isabs(old_name):
@@ -1026,7 +1081,7 @@ class AudioProcessor:
         new_path = os.path.join(directory, new_name)
 
         if os.path.normcase(old_path) == os.path.normcase(new_path):
-            return new_path, False
+            return new_path, False, None
 
         if os.path.exists(new_path) and os.path.normcase(new_path) != os.path.normcase(
             old_path
@@ -1034,10 +1089,9 @@ class AudioProcessor:
             if self._are_files_identical(old_path, new_path):
                 try:
                     os.remove(old_path)
-
-                    return new_path, True
-                except OSError:
-                    pass
+                    return new_path, True, None
+                except OSError as e:
+                    return old_path, False, str(e)
 
         base, extension = os.path.splitext(new_name)
         counter = 1
@@ -1051,13 +1105,13 @@ class AudioProcessor:
             counter += 1
 
         if os.path.normcase(new_path) == os.path.normcase(old_path):
-            return new_path, False
+            return new_path, False, None
 
         try:
             os.rename(old_path, new_path)
-            return new_path, True
-        except OSError:
-            return old_path, False
+            return new_path, True, None
+        except OSError as e:
+            return old_path, False, str(e)
 
     def _are_files_identical(self, path1, path2):
         """

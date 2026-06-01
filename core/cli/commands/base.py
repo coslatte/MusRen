@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, List, Optional
 
-import typer
 from rich.console import Console
 from rich.table import Table
 
@@ -67,4 +66,5 @@ def command(
         cls.help = help
         cls.aliases = aliases or []
         return cls
+
     return decorator

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import typer
+from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -15,10 +16,14 @@ from rich.table import Table
 
 from core.audio_processor import AudioProcessor
 from core.cli.config import get_config_manager
-from core.cli.theme import theme
 from utils.dependencies import check_dependencies
-from utils.tools import get_audio_files
+from utils.tools import (
+    get_audio_files,
+    get_pause_manager,
+    suppress_noisy_loggers,
+)
 
+console = Console()
 lyrics_app = typer.Typer(help="Search and embed synchronized lyrics")
 
 
@@ -42,17 +47,23 @@ def process_lyrics_and_stats(
 
     lyrics_results = {}
 
+    suppress_noisy_loggers()
+    pause = get_pause_manager()
+    pause.start()
+
     with Progress(
+        TextColumn("  [bold cyan]{task.description}"),
         SpinnerColumn(style="bold cyan"),
-        TextColumn("[bold cyan]{task.description}"),
-        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
+        console=console,
         expand=True,
     ) as progress:
         task_id = progress.add_task("Processing...", total=total_files)
 
         def progress_callback(file_path: str, result: Dict[str, Any]) -> None:
+            pause.wait_if_paused(console)
             filename = Path(file_path).name
             if len(filename) > 40:
                 filename = filename[:37] + "..."
@@ -83,6 +94,8 @@ def process_lyrics_and_stats(
             fetch_covers=fetch_covers,
             progress_callback=progress_callback,
         )
+
+    pause.stop()
 
     stats = {
         "total": 0,
@@ -146,8 +159,8 @@ def lyrics_run(
     ),
 ) -> None:
     """Search and embed synchronized lyrics."""
-    if not check_dependencies(use_recognition=recognition):
-        typer.echo(
+    if not check_dependencies(use_recognition=recognition, require_lyrics=True):
+        console.print(
             Panel(
                 "Missing dependencies. Aborting...",
                 border_style="red",
@@ -163,7 +176,7 @@ def lyrics_run(
     files = get_audio_files(audio_dir, recursive=recursive)
 
     if not files:
-        typer.echo(
+        console.print(
             Panel(
                 f"No audio files found in '{directory}'",
                 border_style="yellow",
@@ -180,7 +193,7 @@ def lyrics_run(
     table.add_row("Recognition", "Yes" if recognition else "No")
     table.add_row("Covers", "Yes" if covers else "No")
     table.add_row("Files found", str(len(files)))
-    typer.echo(table)
+    console.print(table)
 
     processor = AudioProcessor(
         directory=audio_dir,
@@ -203,7 +216,7 @@ def lyrics_run(
         stats_table.add_row("Recognized", str(stats.get("recognized", 0)))
     stats_table.add_row("Lyrics found", str(stats.get("lyrics_found", 0)))
     stats_table.add_row("Lyrics embedded", str(stats.get("lyrics_embedded", 0)))
-    typer.echo(stats_table)
+    console.print(stats_table)
 
     results = stats.get("results", {}) or {}
     if results:
@@ -225,7 +238,9 @@ def lyrics_run(
             embedded = bool(res.get("lyrics_embedded", False))
             artist_title = ""
             if recognized:
-                artist_title = f"{res.get('artist', '')} - {res.get('title', '')}".strip()
+                artist_title = (
+                    f"{res.get('artist', '')} - {res.get('title', '')}".strip()
+                )
             if not artist_title:
                 artist_title = Path(file).name
 
@@ -250,9 +265,9 @@ def lyrics_run(
 
             detail.add_row(*row_data)
 
-        typer.echo(detail)
+        console.print(detail)
 
-    typer.echo(
+    console.print(
         Panel(
             "Process completed successfully.",
             border_style="green",

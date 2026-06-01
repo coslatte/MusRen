@@ -1,16 +1,13 @@
-from pathlib import Path
-from typing import Optional
-
 import typer
+from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
 from core.cli.config import VALID_KEYS, get_config_manager
-from core.cli.theme import theme
 
 config_app = typer.Typer(help="Manage configuration and API keys")
 
-console = theme.styles
+console = Console()
 
 
 @config_app.command("set")
@@ -31,7 +28,7 @@ def config_set(
         border_style="green",
         title="Config Updated",
     )
-    typer.echo(panel)
+    console.print(panel)
 
 
 @config_app.command("get")
@@ -40,16 +37,18 @@ def config_get(
 ) -> None:
     """Get a configuration value or API key."""
     if key not in VALID_KEYS:
-        typer.echo(f"Invalid key. Valid keys: {', '.join(VALID_KEYS.keys())}", err=True)
+        console.print(
+            f"[red]Invalid key. Valid keys: {', '.join(VALID_KEYS.keys())}[/red]"
+        )
         raise typer.Exit(1)
 
     config = get_config_manager()
     value = config.get(key)
 
     if value:
-        typer.echo(f"[cyan]{key}[/cyan] = [white]{value}[/white]")
+        console.print(f"[cyan]{key}[/cyan] = [white]{value}[/white]")
     else:
-        typer.echo(f"[yellow]{key}[/yellow] is not set[/yellow]")
+        console.print(f"[yellow]{key}[/yellow] is not set")
 
 
 @config_app.command("list")
@@ -67,12 +66,14 @@ def config_list() -> None:
         value = keys.get(key, "[dim]<not set>[/dim]")
         table.add_row(key, value, description)
 
-    typer.echo(table)
+    console.print(table)
 
 
 @config_app.command("delete")
 def config_delete(
-    key: str = typer.Argument(..., help=f"Key to delete: {', '.join(VALID_KEYS.keys())}"),
+    key: str = typer.Argument(
+        ..., help=f"Key to delete: {', '.join(VALID_KEYS.keys())}"
+    ),
 ) -> None:
     """Delete a configuration value or API key."""
     if key not in VALID_KEYS:
@@ -88,9 +89,9 @@ def config_delete(
             border_style="yellow",
             title="Config Updated",
         )
-        typer.echo(panel)
+        console.print(panel)
     else:
-        typer.echo(f"[yellow]{key}[/yellow] was not set", err=True)
+        console.print(f"[yellow]{key}[/yellow] was not set")
 
 
 @config_app.command("clear")
@@ -98,7 +99,7 @@ def config_clear() -> None:
     """Clear all configuration values."""
     confirm = typer.confirm("Are you sure you want to clear all configuration?")
     if not confirm:
-        typer.echo("[yellow]Cancelled[/yellow]")
+        console.print("[yellow]Cancelled[/yellow]")
         return
 
     config = get_config_manager()

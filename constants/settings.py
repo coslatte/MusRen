@@ -1,1 +1,22 @@
-AUDIO_EXTENSIONS = (".mp3", ".wav", ".flac", ".m4a")
+AUDIO_EXTENSIONS = (
+    ".mp3",
+    ".wav",
+    ".flac",
+    ".m4a",
+    ".aac",
+    ".ogg",
+    ".opus",
+    ".wma",
+    ".aiff",
+    ".au",
+    ".ra",
+    ".dts",
+    ".ac3",
+    ".voc",
+    ".mpc",
+    ".ape",
+    ".tta",
+    ".wv",
+    ".ofr",
+    ".spx",
+)

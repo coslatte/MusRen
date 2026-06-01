@@ -1,12 +1,6 @@
-import os
-from pathlib import Path
-from typing import Optional
-
 import typer
 from dotenv import load_dotenv
-from rich import box
 from rich.console import Console
-from rich.panel import Panel
 from rich.traceback import install as rich_traceback_install
 
 from constants.info import PARSER_DESCRIPTION, MUSIC_RENAMER_VERSION
@@ -16,7 +10,6 @@ from core.cli.commands import covers as covers_cmd
 from core.cli.commands import lyrics as lyrics_cmd
 from core.cli.commands import recognize as recognize_cmd
 from core.cli.commands import rename as rename_cmd
-from core.cli.theme import theme
 
 load_dotenv()
 rich_traceback_install(show_locals=False)

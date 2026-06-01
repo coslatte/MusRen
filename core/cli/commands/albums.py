@@ -1,8 +1,10 @@
+import os
 import shutil
 from collections import defaultdict
 from pathlib import Path
 
 import typer
+from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -14,11 +16,22 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from core.cli.config import get_config_manager
-from core.cli.theme import theme
-from utils.tools import get_audio_files
+from constants.settings import AUDIO_EXTENSIONS
+from utils.tools import (
+    get_audio_files,
+    get_pause_manager,
+    suppress_noisy_loggers,
+)
 
+console = Console()
 albums_app = typer.Typer(help="Organize audio files into album folders")
+
+
+def _is_single_album(album_name: str) -> bool:
+    return (
+        album_name.lower().strip() in ("single", "singles", "unknown album")
+        or len(album_name.strip()) == 0
+    )
 
 
 @albums_app.command("run")
@@ -50,7 +63,7 @@ def albums_run(
     files = get_audio_files(audio_dir, recursive=recursive)
 
     if not files:
-        typer.echo(
+        console.print(
             Panel(
                 f"No audio files found in '{directory}'",
                 border_style="yellow",
@@ -65,21 +78,27 @@ def albums_run(
     table.add_row("Directory", str(directory))
     table.add_row("Recursive", "Yes" if recursive else "No")
     table.add_row("Files found", str(len(files)))
-    typer.echo(table)
+    console.print(table)
 
     album_groups: dict[str, list[Path]] = defaultdict(list)
 
+    suppress_noisy_loggers()
+    pause = get_pause_manager()
+    pause.start()
+
     with Progress(
+        TextColumn("  [bold cyan]{task.description}"),
         SpinnerColumn(style="bold cyan"),
-        TextColumn("[bold cyan]{task.description}"),
-        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
+        console=console,
         expand=True,
     ) as progress:
         task_id = progress.add_task("Analyzing albums...", total=len(files))
 
         for file_path in files:
+            pause.wait_if_paused(console)
             file_path = Path(file_path)
             try:
                 from mutagen._file import File as MutagenFile
@@ -114,18 +133,38 @@ def albums_run(
     errors = []
 
     with Progress(
+        TextColumn("  [bold cyan]{task.description}"),
         SpinnerColumn(style="bold cyan"),
-        TextColumn("[bold cyan]{task.description}"),
-        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
+        console=console,
         expand=True,
     ) as progress:
         total_moves = sum(len(tracks) for tracks in album_groups.values())
         task_id = progress.add_task("Organizing...", total=total_moves)
 
         for album, tracks in album_groups.items():
-            if album != "Unknown Album":
+            pause.wait_if_paused(console)
+            is_single = _is_single_album(album)
+            is_orphan = not is_single and len(tracks) == 1
+
+            if is_single or is_orphan:
+                dest_dir = singles_dir
+                for track in tracks:
+                    pause.wait_if_paused(console)
+                    try:
+                        dest_path = dest_dir / track.name
+                        shutil.move(str(track), str(dest_path))
+                        singles_count += 1
+                    except Exception as e:
+                        errors.append(f"{track.name}: {e}")
+                    progress.update(
+                        task_id,
+                        advance=1,
+                        description=f"Moving: [bold white]{track.name}[/bold white]",
+                    )
+            else:
                 safe_album = "".join(
                     c for c in album if c.isalnum() or c in (" ", "-", "_")
                 ).rstrip()
@@ -135,41 +174,40 @@ def albums_run(
                 album_dir.mkdir(exist_ok=True)
 
                 for track in tracks:
+                    pause.wait_if_paused(console)
                     try:
                         dest_path = album_dir / track.name
                         shutil.move(str(track), str(dest_path))
                         albums_moved += 1
                     except Exception as e:
                         errors.append(f"{track.name}: {e}")
-
                     progress.update(
                         task_id,
                         advance=1,
                         description=f"Moving: [bold white]{track.name}[/bold white]",
                     )
-            else:
-                for track in tracks:
-                    try:
-                        dest_path = singles_dir / track.name
-                        shutil.move(str(track), str(dest_path))
-                        singles_count += 1
-                    except Exception as e:
-                        errors.append(f"{track.name}: {e}")
 
-                    progress.update(
-                        task_id,
-                        advance=1,
-                        description=f"Moving: [bold white]{track.name}[/bold white]",
-                    )
+    pause.stop()
 
     stats_table = Table(title="Organization Summary", box="simple")
     stats_table.add_column("Metric", style="bold cyan")
     stats_table.add_column("Value", style="white")
-    stats_table.add_row("Albums created", str(len([a for a in album_groups.keys() if a != "Unknown Album"])))
+    stats_table.add_row(
+        "Albums created",
+        str(
+            len(
+                [
+                    a
+                    for a in album_groups.keys()
+                    if not _is_single_album(a) and len(album_groups[a]) > 1
+                ]
+            )
+        ),
+    )
     stats_table.add_row("Tracks in albums", str(albums_moved))
     stats_table.add_row("Tracks in Singles", str(singles_count))
     stats_table.add_row("Errors", str(len(errors)))
-    typer.echo(stats_table)
+    console.print(stats_table)
 
     if errors:
         error_table = Table(title="Errors", box="simple")
@@ -178,11 +216,134 @@ def albums_run(
         for error in errors:
             parts = error.split(": ", 1)
             error_table.add_row(parts[0], parts[1] if len(parts) > 1 else "Unknown")
-        typer.echo(error_table)
+        console.print(error_table)
 
-    typer.echo(
+    console.print(
         Panel(
             "Files organized successfully.",
+            border_style="green",
+            title="Completed",
+        )
+    )
+
+
+@albums_app.command("revert")
+def albums_revert(
+    directory: Path = typer.Option(
+        Path.cwd(),
+        "--directory",
+        "-d",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        help="Directory that was previously organized",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Execute without confirmations",
+    ),
+) -> None:
+    """Revert album organization: move all files back to the root directory."""
+    audio_dir = Path(directory)
+    files_in_subdirs = []
+    for root, _, filenames in os.walk(audio_dir):
+        root_path = Path(root)
+        if root_path == audio_dir:
+            continue
+        for f in filenames:
+            if f.lower().endswith(AUDIO_EXTENSIONS):
+                files_in_subdirs.append(root_path / f)
+
+    if not files_in_subdirs:
+        console.print(
+            Panel(
+                "No audio files found in subdirectories. Nothing to revert.",
+                border_style="yellow",
+                title="Warning",
+            )
+        )
+        return
+
+    console.print(
+        Panel(
+            f"Found [bold]{len(files_in_subdirs)}[/bold] files in subdirectories that will be moved back to [bold]{audio_dir}[/bold].",
+            border_style="cyan",
+            title="Revert",
+        )
+    )
+
+    if not yes:
+        keep = typer.confirm("Do you want to revert the organization?")
+        if not keep:
+            console.print("[yellow]Cancelled.[/yellow]")
+            return
+
+    moved = 0
+    errors = []
+
+    with Progress(
+        TextColumn("  [bold yellow]{task.description}"),
+        SpinnerColumn(style="bold yellow"),
+        BarColumn(bar_width=30, complete_style="yellow", finished_style="green"),
+        TaskProgressColumn(),
+        TimeRemainingColumn(),
+        console=console,
+        expand=True,
+    ) as progress:
+        task_id = progress.add_task("Reverting...", total=len(files_in_subdirs))
+
+        for file_path in files_in_subdirs:
+            dest = audio_dir / file_path.name
+            try:
+                if dest.exists():
+                    base = dest.stem
+                    ext = dest.suffix
+                    counter = 1
+                    while dest.exists():
+                        dest = audio_dir / f"{base} ({counter}){ext}"
+                        counter += 1
+                shutil.move(str(file_path), str(dest))
+                moved += 1
+            except Exception as e:
+                errors.append(f"{file_path.name}: {e}")
+
+            progress.update(
+                task_id,
+                advance=1,
+                description=f"Moving: [bold white]{file_path.name}[/bold white]",
+            )
+
+    # Remove empty subdirectories
+    for root, dirs, _ in os.walk(audio_dir, topdown=False):
+        for d in dirs:
+            dir_path = Path(root) / d
+            try:
+                if dir_path != audio_dir and not any(dir_path.iterdir()):
+                    dir_path.rmdir()
+            except Exception:
+                pass
+
+    result = Table(title="Revert Summary", box="simple")
+    result.add_column("Metric", style="bold cyan")
+    result.add_column("Value", style="white")
+    result.add_row("Files restored", str(moved))
+    result.add_row("Errors", str(len(errors)))
+    console.print(result)
+
+    if errors:
+        err_table = Table(title="Errors", box="simple")
+        err_table.add_column("File", style="bold red")
+        err_table.add_column("Error", style="red")
+        for error in errors:
+            parts = error.split(": ", 1)
+            err_table.add_row(parts[0], parts[1] if len(parts) > 1 else "Unknown")
+        console.print(err_table)
+
+    console.print(
+        Panel(
+            "Album organization reverted successfully.",
             border_style="green",
             title="Completed",
         )

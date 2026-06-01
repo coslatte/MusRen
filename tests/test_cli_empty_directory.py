@@ -29,10 +29,14 @@ def test_resolve_directory_prompts_for_another_folder(monkeypatch, tmp_path):
     prompts = iter([str(alternate_directory)])
 
     monkeypatch.setattr(cli_typer, "get_audio_files", fake_get_audio_files)
-    monkeypatch.setattr(cli_typer.console, "status", lambda *args, **kwargs: _NullStatus())
+    monkeypatch.setattr(
+        cli_typer.console, "status", lambda *args, **kwargs: _NullStatus()
+    )
     monkeypatch.setattr(cli_typer.console, "print", lambda *args, **kwargs: None)
     monkeypatch.setattr(cli_typer.typer, "confirm", lambda *args, **kwargs: True)
-    monkeypatch.setattr(cli_typer.typer, "prompt", lambda *args, **kwargs: next(prompts))
+    monkeypatch.setattr(
+        cli_typer.typer, "prompt", lambda *args, **kwargs: next(prompts)
+    )
 
     resolved_directory, files = cli_typer.resolve_directory_with_audio_files(
         initial_directory,

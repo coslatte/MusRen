@@ -10,9 +10,9 @@ setup(
     py_modules=["app"],
     packages=[
         "constants",
-        "core", 
+        "core",
         "core.cli",
-        "core.cli.commands", 
+        "core.cli.commands",
         "utils",
     ],
     zip_safe=False,

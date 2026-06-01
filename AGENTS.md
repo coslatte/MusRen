@@ -120,15 +120,30 @@ Produce:
 4) A brief validation summary and commands
 ```
 
+## Mandatory ruff check (AI agents)
+
+**Before every commit or pull request**, run the following two commands and fix any reported issues:
+
+```powershell
+py -3 -m ruff format .
+py -3 -m ruff check .
+```
+
+`ruff format` reformats all Python files to match the project style.  
+`ruff check` detects lint errors (unused imports, undefined names, etc.).  
+Do not proceed until both pass without errors.
+
 ## Agent checklist (quick)
 
 - [ ] Did I plan 2–6 steps? 
 - [ ] Did I avoid module-level side effects? 
+- [ ] Did I run `ruff format .` and `ruff check .`? 
 - [ ] Did I run import checks and tests? 
 - [ ] Did I produce a small, reversible patch? 
 ```text
 - [ ] Did I plan 2–6 steps?
 - [ ] Did I avoid module-level side effects?
+- [ ] Did I run `ruff format .` and `ruff check .`?
 - [ ] Did I run import checks and tests?
 - [ ] Did I produce a small, reversible patch?
 ```

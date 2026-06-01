@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import typer
+from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -12,11 +13,14 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from core.cli.config import get_config_manager
-from core.cli.theme import theme
 from utils.dependencies import check_dependencies
-from utils.tools import get_audio_files
+from utils.tools import (
+    get_audio_files,
+    get_pause_manager,
+    suppress_noisy_loggers,
+)
 
+console = Console()
 covers_app = typer.Typer(help="Add album covers to audio files")
 
 
@@ -45,8 +49,8 @@ def covers_run(
     ),
 ) -> None:
     """Add album covers to audio files."""
-    if not check_dependencies(use_recognition=False):
-        typer.echo(
+    if not check_dependencies(require_covers=True):
+        console.print(
             Panel(
                 "Missing dependencies. Aborting...",
                 border_style="red",
@@ -59,7 +63,7 @@ def covers_run(
     try:
         import core.install_covers as install_covers
     except ImportError:
-        typer.echo(
+        console.print(
             Panel(
                 "Could not import the cover installation module.",
                 border_style="red",
@@ -72,7 +76,7 @@ def covers_run(
     files = get_audio_files(audio_dir, recursive=recursive)
 
     if not files:
-        typer.echo(
+        console.print(
             Panel(
                 f"No audio files found in '{directory}'",
                 border_style="yellow",
@@ -87,19 +91,25 @@ def covers_run(
     table.add_row("Directory", str(directory))
     table.add_row("Recursive", "Yes" if recursive else "No")
     table.add_row("Files found", str(len(files)))
-    typer.echo(table)
+    console.print(table)
+
+    suppress_noisy_loggers()
+    pause = get_pause_manager()
+    pause.start()
 
     with Progress(
+        TextColumn("  [bold cyan]{task.description}"),
         SpinnerColumn(style="bold cyan"),
-        TextColumn("[bold cyan]{task.description}"),
-        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
+        console=console,
         expand=True,
     ) as progress:
         task_id = progress.add_task("Adding covers...", total=len(files))
 
         def progress_callback(file_path: str, result: dict) -> None:
+            pause.wait_if_paused(console)
             filename = Path(file_path).name
             if len(filename) > 40:
                 filename = filename[:37] + "..."
@@ -120,7 +130,9 @@ def covers_run(
 
         install_covers.run(audio_dir, progress_callback=progress_callback)
 
-    typer.echo(
+    pause.stop()
+
+    console.print(
         Panel(
             "Covers added successfully.",
             border_style="green",

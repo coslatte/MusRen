@@ -1,7 +1,8 @@
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
+from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -15,11 +16,14 @@ from rich.table import Table
 
 from core.audio_processor import AudioProcessor
 from core.cli.config import get_config_manager
-from core.cli.theme import theme
 from utils.dependencies import check_dependencies
-from utils.tools import get_audio_files
+from utils.tools import (
+    get_audio_files,
+    get_pause_manager,
+    suppress_noisy_loggers,
+)
 
-console = theme.styles
+console = Console()
 
 rename_app = typer.Typer(help="Rename audio files based on metadata")
 
@@ -50,7 +54,7 @@ def rename_run(
 ) -> None:
     """Rename audio files based on their metadata."""
     if not check_dependencies(use_recognition=False):
-        typer.echo(
+        console.print(
             Panel(
                 "Missing dependencies. Aborting...",
                 border_style="red",
@@ -66,7 +70,7 @@ def rename_run(
     files = get_audio_files(audio_dir, recursive=recursive)
 
     if not files:
-        typer.echo(
+        console.print(
             Panel(
                 f"No audio files found in '{directory}'",
                 border_style="yellow",
@@ -81,7 +85,7 @@ def rename_run(
     table.add_row("Directory", str(directory))
     table.add_row("Recursive", "Yes" if recursive else "No")
     table.add_row("Files found", str(len(files)))
-    typer.echo(table)
+    console.print(table)
 
     processor = AudioProcessor(
         directory=audio_dir,
@@ -89,17 +93,30 @@ def rename_run(
         recursive=recursive,
     )
 
+    errors = []
+    skipped = []
+    renamed_count = 0
+    no_change_count = 0
+    start_time = datetime.now()
+
+    suppress_noisy_loggers()
+    pause = get_pause_manager()
+    pause.start()
+
     with Progress(
+        TextColumn("  [bold cyan]{task.description:[bold cyan]}"),
         SpinnerColumn(style="bold cyan"),
-        TextColumn("[bold cyan]{task.description}"),
-        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
+        console=console,
         expand=True,
     ) as progress:
         task_id = progress.add_task("Renaming...", total=len(files))
 
         def rename_callback(file_path, result):
+            nonlocal renamed_count, no_change_count
+            pause.wait_if_paused(console)
             filename = Path(file_path).name
             if len(filename) > 40:
                 filename = filename[:37] + "..."
@@ -107,11 +124,16 @@ def rename_run(
             status = ""
             if result.get("renamed"):
                 status = "[green]Renamed[/green]"
+                renamed_count += 1
             elif result.get("skipped"):
+                reason = result.get("reason", "Unknown")
+                skipped.append((filename, reason))
                 status = "[dim]Skipped[/dim]"
             elif result.get("error"):
+                errors.append((filename, result["error"]))
                 status = "[red]Error[/red]"
             else:
+                no_change_count += 1
                 status = "[dim]No changes[/dim]"
 
             progress.update(
@@ -122,24 +144,60 @@ def rename_run(
 
         changes = processor.rename_files(progress_callback=rename_callback)
 
+    pause.stop()
+    elapsed = datetime.now() - start_time
+    elapsed_str = (
+        f"{elapsed.seconds // 60}m {elapsed.seconds % 60}s"
+        if elapsed.seconds >= 60
+        else f"{elapsed.seconds}s"
+    )
+
+    summary = Table(title="Rename Summary", box="simple")
+    summary.add_column("Metric", style="bold cyan")
+    summary.add_column("Value", style="white")
+    summary.add_row("Total files", str(len(files)))
+    summary.add_row("Renamed", str(renamed_count))
+    summary.add_row("No changes", str(no_change_count))
+    summary.add_row("Skipped", str(len(skipped)))
+    summary.add_row("Errors", f"[red]{len(errors)}[/red]" if errors else "0")
+    summary.add_row("Time", elapsed_str)
+    console.print(summary)
+
+    if skipped:
+        skip_table = Table(title="Skipped Files", box="simple")
+        skip_table.add_column("File", style="yellow")
+        skip_table.add_column("Reason", style="dim")
+        for fname, reason in skipped:
+            skip_table.add_row(fname, reason)
+        console.print(skip_table)
+
+    if errors:
+        err_table = Table(title="Error Details", box="simple")
+        err_table.add_column("File", style="bold red")
+        err_table.add_column("Cause", style="red")
+        for fname, cause in errors:
+            err_table.add_row(fname, cause)
+        console.print(err_table)
+
     if changes:
         changes_table = Table(title="Name changes", box="simple_heavy")
         changes_table.add_column("Before", style="yellow")
         changes_table.add_column("After", style="green")
         for new_path, old_path in changes.items():
             changes_table.add_row(Path(old_path).name, Path(new_path).name)
-        typer.echo(changes_table)
+        console.print(changes_table)
 
         keep_changes = yes or typer.confirm("Do you want to keep the name changes?")
         if not keep_changes:
             with Progress(
+                TextColumn("  [bold yellow]{task.description}"),
                 SpinnerColumn(style="bold yellow"),
-                TextColumn("[bold yellow]{task.description}"),
                 BarColumn(
-                    bar_width=None, complete_style="yellow", finished_style="green"
+                    bar_width=30, complete_style="yellow", finished_style="green"
                 ),
                 TaskProgressColumn(),
                 TimeRemainingColumn(),
+                console=console,
                 expand=True,
             ) as progress:
                 task_id = progress.add_task("Reverting...", total=len(changes))
@@ -156,7 +214,7 @@ def rename_run(
 
                 processor.undo_rename(changes, progress_callback=undo_callback)
 
-            typer.echo(
+            console.print(
                 Panel(
                     "The name changes have been reverted.",
                     border_style="yellow",
@@ -164,7 +222,7 @@ def rename_run(
                 )
             )
         else:
-            typer.echo(
+            console.print(
                 Panel(
                     "The name changes have been kept.",
                     border_style="green",
@@ -172,9 +230,9 @@ def rename_run(
                 )
             )
     else:
-        typer.echo("[bold]No name changes were made.[/bold]")
+        console.print("[bold yellow]No name changes were made.[/bold yellow]")
 
-    typer.echo(
+    console.print(
         Panel(
             "Process completed successfully.",
             border_style="green",

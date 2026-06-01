@@ -24,8 +24,9 @@ class TestRename(unittest.TestCase):
         # _safe_rename expects absolute path for old_name if recursive, or relative if not?
         # The fix handles both. Let's pass absolute path as get_audio_files does.
 
-        new_name, changed = self.processor._safe_rename(filepath, filename)
+        new_name, changed, error = self.processor._safe_rename(filepath, filename)
 
+        self.assertIsNone(error)
         self.assertFalse(changed)
         self.assertEqual(os.path.basename(new_name), filename)
         self.assertTrue(os.path.exists(filepath))
@@ -42,9 +43,12 @@ class TestRename(unittest.TestCase):
         # Tag says "AC/DC - TNT" -> unsanitized new name "AC/DC - TNT.mp3"
         unsanitized_new_name = "AC/DC - TNT.mp3"
 
-        new_name, changed = self.processor._safe_rename(filepath, unsanitized_new_name)
+        new_name, changed, error = self.processor._safe_rename(
+            filepath, unsanitized_new_name
+        )
 
         # Should detect it's the same file after sanitization and do nothing
+        self.assertIsNone(error)
         self.assertFalse(changed)
         self.assertEqual(os.path.basename(new_name), filename)
         self.assertFalse(
@@ -61,8 +65,9 @@ class TestRename(unittest.TestCase):
 
         # Rename "Song.mp3" to "Renamed.mp3"
         # old_name passed as absolute path
-        new_name, changed = self.processor._safe_rename(filepath, "Renamed.mp3")
+        new_name, changed, error = self.processor._safe_rename(filepath, "Renamed.mp3")
 
+        self.assertIsNone(error)
         self.assertTrue(changed)
         self.assertEqual(os.path.basename(new_name), "Renamed.mp3")
         # Check it stayed in subdir
@@ -86,8 +91,9 @@ class TestRename(unittest.TestCase):
         with open(path3, "w") as f:
             f.write("content3")
 
-        new_name, changed = self.processor._safe_rename(path3, "Song.mp3")
+        new_name, changed, error = self.processor._safe_rename(path3, "Song.mp3")
 
+        self.assertIsNone(error)
         self.assertTrue(changed)
         self.assertEqual(os.path.basename(new_name), "Song (2).mp3")
         self.assertTrue(os.path.exists(os.path.join(self.test_dir, "Song (2).mp3")))

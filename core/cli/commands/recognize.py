@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict
 
 import typer
+from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -15,10 +16,14 @@ from rich.table import Table
 
 from core.audio_processor import AudioProcessor
 from core.cli.config import get_config_manager
-from core.cli.theme import theme
 from utils.dependencies import check_dependencies
-from utils.tools import get_audio_files
+from utils.tools import (
+    get_audio_files,
+    get_pause_manager,
+    suppress_noisy_loggers,
+)
 
+console = Console()
 recognize_app = typer.Typer(help="Recognize audio files using AcoustID")
 
 
@@ -54,7 +59,7 @@ def recognize_run(
 ) -> None:
     """Recognize audio files and fetch metadata."""
     if not check_dependencies(use_recognition=True):
-        typer.echo(
+        console.print(
             Panel(
                 "Missing dependencies. Aborting...",
                 border_style="red",
@@ -67,7 +72,7 @@ def recognize_run(
     api_key = config.get("acoustid")
 
     if not api_key:
-        typer.echo(
+        console.print(
             Panel(
                 "No AcoustID API key set. Run: musren config set acoustid YOUR_KEY",
                 border_style="yellow",
@@ -79,7 +84,7 @@ def recognize_run(
     files = get_audio_files(audio_dir, recursive=recursive)
 
     if not files:
-        typer.echo(
+        console.print(
             Panel(
                 f"No audio files found in '{directory}'",
                 border_style="yellow",
@@ -95,7 +100,7 @@ def recognize_run(
     table.add_row("Recursive", "Yes" if recursive else "No")
     table.add_row("Recognition", "AcoustID" if not shazam else "Shazam")
     table.add_row("Files found", str(len(files)))
-    typer.echo(table)
+    console.print(table)
 
     processor = AudioProcessor(
         directory=audio_dir,
@@ -104,17 +109,23 @@ def recognize_run(
         use_shazam=shazam,
     )
 
+    suppress_noisy_loggers()
+    pause = get_pause_manager()
+    pause.start()
+
     with Progress(
+        TextColumn("  [bold cyan]{task.description}"),
         SpinnerColumn(style="bold cyan"),
-        TextColumn("[bold cyan]{task.description}"),
-        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        BarColumn(bar_width=30, complete_style="cyan", finished_style="green"),
         TaskProgressColumn(),
         TimeRemainingColumn(),
+        console=console,
         expand=True,
     ) as progress:
         task_id = progress.add_task("Recognizing...", total=len(files))
 
         def progress_callback(file_path: str, result: Dict) -> None:
+            pause.wait_if_paused(console)
             filename = Path(file_path).name
             if len(filename) > 40:
                 filename = filename[:37] + "..."
@@ -142,6 +153,8 @@ def recognize_run(
             progress_callback=progress_callback,
         )
 
+    pause.stop()
+
     recognized = sum(1 for _, r in results.items() if r.get("recognition", False))
     updated = sum(1 for _, r in results.items() if r.get("metadata_updated", False))
 
@@ -151,7 +164,7 @@ def recognize_run(
     stats_table.add_row("Total files", str(len(results)))
     stats_table.add_row("Recognized", str(recognized))
     stats_table.add_row("Metadata updated", str(updated))
-    typer.echo(stats_table)
+    console.print(stats_table)
 
     if results:
         detail = Table(title="File Detail", box="simple_heavy")
@@ -169,15 +182,13 @@ def recognize_run(
 
             artist_title = ""
             if recognized:
-                artist_title = f"{res.get('artist', '')} - {res.get('title', '')}".strip()
+                artist_title = (
+                    f"{res.get('artist', '')} - {res.get('title', '')}".strip()
+                )
             if not artist_title:
                 artist_title = Path(file).name
 
-            error_msg = (
-                res.get("recognition_error")
-                or res.get("metadata_error")
-                or ""
-            )
+            error_msg = res.get("recognition_error") or res.get("metadata_error") or ""
 
             if recognized and not error_msg:
                 error_msg = "N/A"
@@ -189,9 +200,9 @@ def recognize_run(
 
             detail.add_row(*row_data)
 
-        typer.echo(detail)
+        console.print(detail)
 
-    typer.echo(
+    console.print(
         Panel(
             "Recognition completed successfully.",
             border_style="green",

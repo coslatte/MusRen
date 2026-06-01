@@ -13,9 +13,11 @@ def main(interactive: bool = True) -> None:
 
     if interactive and len(sys.argv) == 1:
         from core.cli.shell import cli as musren_shell
+
         musren_shell()
     else:
         from core.cli.shell import InteractiveShell
+
         shell = InteractiveShell()
         if len(sys.argv) > 1:
             cmd = " ".join(sys.argv[1:])

@@ -111,7 +111,9 @@ def main(
 ):
     console.rule("[bold cyan]musren[/bold cyan]")
     with console.status("Checking dependencies...", spinner="dots"):
-        if not check_dependencies(use_recognition=recognition):
+        if not check_dependencies(
+            use_recognition=recognition, require_lyrics=lyrics, require_covers=cover
+        ):
             console.print(
                 Panel.fit(
                     "Missing dependencies. Aborting...",

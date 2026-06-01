@@ -10,8 +10,9 @@ import importlib.util
 import shutil
 
 
-def check_dependencies(use_recognition=False):
-    # Map Python import names to pip package names when they differ
+def check_dependencies(
+    use_recognition=False, require_lyrics=False, require_covers=False
+):
     MODULE_TO_PIP = {
         "mutagen": "mutagen",
         "requests": "requests",
@@ -23,23 +24,31 @@ def check_dependencies(use_recognition=False):
     def is_installed(module_name: str) -> bool:
         return importlib.util.find_spec(module_name) is not None
 
+    required = ["mutagen"]
+    if use_recognition or require_lyrics or require_covers:
+        required.append("requests")
+    if require_lyrics:
+        required.append("syncedlyrics")
+    if use_recognition:
+        required.append("acoustid")
+
     missing_deps = []
 
-    for mod in ("mutagen", "requests", "syncedlyrics", "acoustid"):
+    for mod in required:
         if is_installed(mod):
             print(f"[OK] {mod} is installed")
         else:
             missing_deps.append(MODULE_TO_PIP.get(mod, mod))
 
-    # If there are missing dependencies, offer to install them
     if missing_deps:
         print("\nMissing the following dependencies:")
         for dep in missing_deps:
             print(f"  - {dep}")
 
-        install = input("\nDo you want to install the missing dependencies? (Y/N): ").lower()
+        install = input(
+            "\nDo you want to install the missing dependencies? (Y/N): "
+        ).lower()
         if install == "y":
-            # Build installation command
             pip_cmd = [sys.executable, "-m", "pip", "install"]
             pip_cmd.extend(missing_deps)
 
@@ -48,7 +57,6 @@ def check_dependencies(use_recognition=False):
                 subprocess.check_call(pip_cmd)
                 print("\n[OK] Dependencies installed successfully")
 
-                # If pyacoustid was installed, check fpcalc
                 if "pyacoustid" in missing_deps or "acoustid" in missing_deps:
                     installed, message = check_acoustid_installation()
                     if not installed:
@@ -67,7 +75,6 @@ def check_dependencies(use_recognition=False):
             )
             return False
 
-    # If we reach here, check AcoustID installation (if present and recognition is used)
     if use_recognition and check_acoustid_needed():
         installed, message = check_acoustid_installation()
         print(f"\nChromaprint/AcoustID: {message}")
