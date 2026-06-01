@@ -22,7 +22,7 @@ from rich.traceback import install as rich_traceback_install
 from constants.info import PARSER_DESCRIPTION
 from core.audio_processor import AudioProcessor
 from utils.dependencies import check_dependencies
-from utils.tools import format_progress_desc, get_audio_files
+from utils.tools import format_progress_desc, get_audio_files, suppress_noisy_loggers
 
 load_dotenv()
 rich_traceback_install(show_locals=False)
@@ -177,6 +177,7 @@ def main(
                 use_recognition=False,
                 process_lyrics=False,
                 fetch_covers=True,
+                yes=yes,
             )
             console.print("[bold green]Covers added successfully.[/bold green]")
         except Exception as e:
@@ -203,6 +204,7 @@ def main(
             use_recognition=recognition,
             process_lyrics=lyrics,
             fetch_covers=cover,
+            yes=yes,
         )
 
         stats_table = Table(title=f"Processing Summary ({title_text})", box=box.SIMPLE)
@@ -416,6 +418,7 @@ def process_lyrics_and_stats(
     use_recognition: bool,
     process_lyrics: bool = True,
     fetch_covers: bool = False,
+    yes: bool = False,
 ) -> Dict[str, Any]:
     # Count files first for progress bar
     files = get_audio_files(processor.directory, recursive=processor.recursive)
@@ -431,6 +434,45 @@ def process_lyrics_and_stats(
         }
 
     lyrics_results = {}
+
+    suppress_noisy_loggers()
+
+    if total_files > 100 and not yes:
+        seconds_per_file = 8 if use_recognition else 3
+        if fetch_covers:
+            seconds_per_file += 5
+        est_seconds = total_files * seconds_per_file
+        if est_seconds > 120:
+            hours, remainder = divmod(est_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            parts = []
+            if hours:
+                parts.append(f"{hours}h")
+            if minutes:
+                parts.append(f"{minutes}m")
+            parts.append(f"{seconds}s")
+            est_str = " ".join(parts)
+
+            if hours:
+                console.print(
+                    Panel(
+                        f"[yellow]{total_files} files will be processed.[/yellow]\n"
+                        f"Estimated time: [bold]{est_str}[/bold]\n"
+                        "Consider using a smaller batch or be patient.",
+                        border_style="yellow",
+                        title="Large batch",
+                    )
+                )
+                try:
+                    typer.confirm("Continue?", default=True, abort=True)
+                except typer.Abort:
+                    return {
+                        "total": 0,
+                        "recognized": 0,
+                        "lyrics_found": 0,
+                        "lyrics_embedded": 0,
+                        "results": {},
+                    }
 
     with Progress(
         TextColumn("[bold cyan]{task.description}"),

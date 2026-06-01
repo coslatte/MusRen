@@ -144,7 +144,18 @@ def check_internet_connection(timeout=2):
 
 # ── Logger suppression ────────────────────────────────────────────────────────
 
-_NOISY_LOGGERS = {"syncedlyrics", "syncedlyrics.providers.musixmatch"}
+_NOISY_LOGGERS = {
+    "syncedlyrics",
+    "syncedlyrics.providers.musixmatch",
+    # Provider class names used as logger names in syncedlyrics (LRCProvider subclasses)
+    "Musixmatch",
+    "Lrclib",
+    "NetEase",
+    "Deezer",
+    "Megalobiz",
+    "Lyricsify",
+    "Genius",
+}
 
 
 def suppress_noisy_loggers():

@@ -33,6 +33,7 @@ def process_lyrics_and_stats(
     use_recognition: bool = False,
     process_lyrics: bool = True,
     fetch_covers: bool = False,
+    yes: bool = False,
 ) -> Dict[str, Any]:
     files = get_audio_files(processor.directory, recursive=processor.recursive)
     total_files = len(files)
@@ -49,6 +50,45 @@ def process_lyrics_and_stats(
     lyrics_results = {}
 
     suppress_noisy_loggers()
+
+    if total_files > 100 and not yes:
+        seconds_per_file = 8 if use_recognition else 3
+        if fetch_covers:
+            seconds_per_file += 5
+        est_seconds = total_files * seconds_per_file
+        if est_seconds > 120:
+            hours, remainder = divmod(est_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            parts = []
+            if hours:
+                parts.append(f"{hours}h")
+            if minutes:
+                parts.append(f"{minutes}m")
+            parts.append(f"{seconds}s")
+            est_str = " ".join(parts)
+
+            if hours:
+                from rich.panel import Panel
+
+                console.print(
+                    Panel(
+                        f"[yellow]{total_files} files will be processed.[/yellow]\n"
+                        f"Estimated time: [bold]{est_str}[/bold]\n"
+                        "Consider using a smaller batch or be patient.",
+                        border_style="yellow",
+                        title="Large batch",
+                    )
+                )
+                try:
+                    typer.confirm("Continue?", default=True, abort=True)
+                except typer.Abort:
+                    return {
+                        "total": 0,
+                        "recognized": 0,
+                        "lyrics_found": 0,
+                        "lyrics_embedded": 0,
+                        "results": {},
+                    }
     pause = get_pause_manager()
     pause.start()
 
@@ -205,6 +245,7 @@ def lyrics_run(
         use_recognition=recognition,
         process_lyrics=True,
         fetch_covers=covers,
+        yes=yes,
     )
 
     stats_table = Table(title="Processing Summary", box=SIMPLE)

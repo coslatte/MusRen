@@ -581,6 +581,7 @@ class AudioProcessor:
 
             search_term = f"{artist} {title}"
             lrc_content = syncedlyrics.search(search_term)
+            suppress_noisy_loggers()
 
             if lrc_content and len(lrc_content) > 0:
                 return {"status": True, "lyrics": lrc_content}
