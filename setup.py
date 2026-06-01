@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="musren",
-    version="1.1.0",
+    version="1.2.0",
     description="Music file renamer with metadata, lyrics, covers and recognition",
     author="cosLatte",
     author_email="gabrielpazruiz02@gmail.com",

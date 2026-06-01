@@ -5,7 +5,7 @@ Module with info constants.
 PARSER_DESCRIPTION = (
     "Renames audio files based on their metadata and embeds synchronized lyrics."
 )
-MUSIC_RENAMER_VERSION = "1.1.0"
+MUSIC_RENAMER_VERSION = "1.2.0"
 MUSIC_RENAMER_NAME = "musren"
 MUSIC_RENAMER_DESCRIPTION = (
     "Music file renamer with metadata, lyrics, covers and recognition"

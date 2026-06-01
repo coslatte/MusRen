@@ -114,8 +114,14 @@ class InteractiveShell:
                     MenuItem(
                         5, "Albums", "Organize files into album folders", "albums"
                     ),
-                    MenuItem(6, "Config", "Manage API keys and settings", "config"),
-                    MenuItem(7, "Help", "Show help and usage guide", "help"),
+                    MenuItem(
+                        6,
+                        "Albums Revert",
+                        "Revert album organization (flatten)",
+                        "albums revert",
+                    ),
+                    MenuItem(7, "Config", "Manage API keys and settings", "config"),
+                    MenuItem(8, "Help", "Show help and usage guide", "help"),
                 ],
             ),
             "config": Screen(
@@ -359,10 +365,7 @@ class InteractiveShell:
     def _prompt_for_path(self, command_name: str) -> Optional[str]:
         console.print(f"[cyan]Specify path for {command_name}:[/cyan]")
         console.print(
-            "[dim]Enter = current dir, . = current dir, or absolute path (e.g., C:\\Music, F:\\)[/dim]"
-        )
-        console.print(
-            "[yellow]Note: Use real filesystem path, NOT 'This PC\\...' style paths from Explorer[/yellow]"
+            "[dim]Enter = current dir, . = current dir, b = cancel, or absolute path (e.g., C:\\Music, F:\\)[/dim]"
         )
 
         prompt = f"[bold cyan]{command_name}[/bold cyan]$ "
@@ -370,6 +373,10 @@ class InteractiveShell:
 
         if not path_input or path_input == ".":
             return str(self.current_dir)
+
+        if path_input.lower() in ("b", "back", "backmenu", "q", "quit", "exit"):
+            console.print("[yellow]Cancelled.[/yellow]")
+            return None
 
         if "This PC" in path_input or path_input.startswith("\\"):
             console.print(
@@ -447,11 +454,20 @@ class InteractiveShell:
         self._run_typer_command(recognize_app, normalized_args, "recognize")
 
     def _run_albums(self, args: list) -> None:
+        from core.cli.commands.albums import albums_app
+
+        if args and args[0] == "revert":
+            normalized_args = self._normalize_path_args(args[1:], "albums revert")
+            if normalized_args is None:
+                return
+            self._run_typer_command(
+                albums_app, ["revert"] + normalized_args, "albums revert"
+            )
+            return
+
         normalized_args = self._normalize_path_args(args, "albums")
         if normalized_args is None:
             return
-
-        from core.cli.commands.albums import albums_app
 
         self._run_typer_command(albums_app, normalized_args, "albums")
 
