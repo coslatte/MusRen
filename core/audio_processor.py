@@ -894,7 +894,7 @@ class AudioProcessor:
         except Exception:
             return False
 
-    def rename_files(self, progress_callback=None):
+    def rename_files(self, progress_callback=None, rename_format="1"):
         """
         Renames audio files based on their metadata.
         If the file doesn't have the necessary metadata (artist or title),
@@ -905,6 +905,10 @@ class AudioProcessor:
 
         Args:
             progress_callback (callable): Function to call upon completing each file
+            rename_format (str): Format for renaming:
+                "1" = artist - title
+                "2" = title
+                "3" = track_number - artist - title (if album, otherwise artist - title)
 
         Returns:
             dict: Changes made (new_name: original_name)
@@ -983,15 +987,18 @@ class AudioProcessor:
                 album = meta["album"]
                 tracknumber = meta["tracknumber"]
                 is_album = album != "__no_album__" and album_counts.get(album, 0) > 2
+                ext = os.path.splitext(file)[1]
 
-                if is_album and tracknumber:
+                if rename_format == "2":
+                    new_name = f"{title}{ext}"
+                elif rename_format == "3" and is_album and tracknumber:
                     try:
                         track_num = int(tracknumber.split("/")[0].split(".")[0])
-                        new_name = f"{track_num:02d} - {artist} - {title}{os.path.splitext(file)[1]}"
+                        new_name = f"{track_num:02d} - {artist} - {title}{ext}"
                     except (ValueError, IndexError):
-                        new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
+                        new_name = f"{artist} - {title}{ext}"
                 else:
-                    new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
+                    new_name = f"{artist} - {title}{ext}"
 
                 actual_new_path, changed, error = self._safe_rename(file, new_name)
                 if error:
